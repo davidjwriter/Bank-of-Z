@@ -85,7 +85,7 @@ The setup task performs three main stages:
 ```yaml
 pipeline:
   workspace: /u/$USER/sandbox      # USS workspace directory
-  application: MortgageApplication # Application name
+  application: Bank-of-z # Application name
   branch: main                     # Git branch
   tmphlq: DBEHM                   # Dataset HLQ
 
