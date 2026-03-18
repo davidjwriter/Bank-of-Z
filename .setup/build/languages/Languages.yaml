@@ -15,15 +15,15 @@ version: 1.0.0
 # Import language task configurations
 #########################################################
 include: 
-  - file: Transfer.yaml
-  - file: BMS.yaml
-  - file: Cobol.yaml
-  - file: CobolTestcase.yaml
-  - file: CPP.yaml
-  - file: Assembler.yaml
-  - file: PLI.yaml
-  - file: REXX.yaml
-  - file: LinkEdit.yaml
+  - file: languages/Transfer.yaml
+  - file: languages/BMS.yaml
+  - file: languages/Cobol.yaml
+  - file: languages/CobolTestcase.yaml
+  - file: languages/CPP.yaml
+  - file: languages/Assembler.yaml
+  - file: languages/PLI.yaml
+  - file: languages/REXX.yaml
+  - file: languages/LinkEdit.yaml
 
 ############################################################################ 
 # stage: Languages used to create a reusable list of language configurations
@@ -52,36 +52,40 @@ variables:
   ############################################################
   
   # z/OS macro library. Example: SYS1.MACLIB
-  #- name: MACLIB
-  #  value: 
+  - name: MACLIB
+    value: SYS1.MACLIB 
     
   # LE (Language Environment) load library. Example: CEE.SCEELKED
-  #- name: SCEELKED
-  #  value: 
+  - name: SCEELKED
+    value: CEE.SCEELKED
+
+  # LE (Language Environment) sample library. Example: CEE.SCEESAMP
+  - name: SCEESAMP
+    value: CEE.SCEESAMP
 
   # High Level Assembler (HLASM) load library. Example: ASM.SASMMOD1
-  #- name: SASMMOD1
-  #  value: 
+  - name: SASMMOD1
+    value: HLASM.SASMMOD1
 
   # Cobol Compiler Data Sets. Example: COBOL.V6R1M0.SIGYCOMP
-  #- name: SIGYCOMP
-  #  value: 
+  - name: SIGYCOMP
+    value: COBOL.V6R4.SIGYCOMP
 
   # CICS Macro Library. Example: CICSTS.V6R1M0.CICS.SDFHMAC
-  #- name: SDFHMAC
-  #  value: 
+  - name: SDFHMAC
+    value: CICSTS.V5R4.CICS.SDFHMAC
 
   # CICS COBOL Library. Example: CICSTS.V6R1M0.CICS.SDFHCOB
-  #- name: SDFHCOB
-  #  value: 
+  - name: SDFHCOB
+    value: CICSTS.V5R4.CICS.SDFHCOB 
   
   # CICS Load Library. Example: CICSTS.V6R1M0.CICS.SDFHLOAD
-  #- name: SDFHLOAD
-  #  value: 
+  - name: SDFHLOAD
+    value: CICSTS.V5R4.CICS.SDFHLOAD
   
   # DB2 Load Library. Example: DB2.V12R1M0.SDSNLOAD
-  #- name: SDSNLOAD
-  #  value: 
+  - name: SDSNLOAD
+    value: DBC0CFG.DB2.V12.SDSNLOAD
 
   # Optional IDz Load Library. Needed for Error Feedback option. Example: FEL.V16R0M0.SFELLOAD
   #- name: SFELLOAD
@@ -184,8 +188,8 @@ variables:
   #  value:
 
   # IBM Debug Tool library containing necessary TAz copybooks
-  #- name: SEQASAMP
-  #  value: 
+  - name: SEQASAMP
+    value: DEBUG.V17.SEQASAMP
 
   ##############################
   # IDz Datasets

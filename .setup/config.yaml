@@ -40,6 +40,9 @@ pipeline_script:
   # Local source file
   source: pipeline_simulation.sh
   
+  # workspace directory
+  workspace: /u/dbehm/sandbox/workspace
+  
   # Target USS location
   target: /u/dbehm/sandbox/pipeline_simulation.sh
 

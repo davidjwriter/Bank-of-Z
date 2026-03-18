@@ -61,7 +61,7 @@ tasks:
         
       # default dependency search path for single repository build
       - name: dependencySearchPath
-        value: search:${WORKSPACE}/?path=${APP_DIR_NAME}/copybook/*.cpy
+        value: search:${WORKSPACE}/?path=${APP_DIR_NAME}/**/*.cpy
 
       # flag incating to scan the load module for static link dependencies  
       - name: scanLoadModule
@@ -135,6 +135,7 @@ tasks:
           - {                 dsn: "${HLQ}.BMS.COPY", options: "shr" }
           - {                 dsn: "${SDFHCOB}", condition: "${IS_CICS}", options: "shr" }
           - {                 dsn: "${SCSQCOBC}", condition: "${IS_MQ}", options: "shr" }
+          - {                 dsn: "${SCEESAMP}", options: "shr" }
           - { name: "DBRMLIB", dsn: "${HLQ}.DBRM(${MEMBER})", condition: "${IS_SQL}", options: "shr", output: true, deployType: "DBRM" }          
           - { name: "SYSADATA", condition: { exists: "errPrefix" }, options: "DUMMY" }
           - { name: "SYSXMLSD", condition: { exists: "errPrefix" }, dsn: "${HLQ}.${errPrefix}.SYSXMLSD.XML", options: "tracks space(200,40) dsorg(PS) lrecl(16383) recfm(v,b) new keep" }

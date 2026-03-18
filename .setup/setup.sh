@@ -330,49 +330,8 @@ stage3_upload_framework() {
         exit 1
     fi
     
-    # Upload pipeline simulation script
-    print_info "Uploading pipeline simulation script..."
-    print_info "Source: $PIPELINE_SCRIPT_SOURCE"
-    print_info "Target: $PIPELINE_SCRIPT_TARGET"
-    
-    if [ ! -f "$PIPELINE_SCRIPT_SOURCE" ]; then
-        print_error "Pipeline simulation script not found: $PIPELINE_SCRIPT_SOURCE"
-        exit 1
-    fi
-    
-    # Check if script already exists
-    if zowe rse-api-for-zowe-cli list uss "$PIPELINE_SCRIPT_TARGET" &> /dev/null; then
-        print_warning "Pipeline script already exists: $PIPELINE_SCRIPT_TARGET"
-        read -p "Do you want to overwrite it? (y/N): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            print_info "Keeping existing pipeline script, skipping upload"
-            return 0
-        fi
-        print_info "Overwriting existing pipeline script..."
-    fi
-    
-    # Ensure parent directory exists
-    SCRIPT_PARENT_DIR=$(dirname "$PIPELINE_SCRIPT_TARGET")
-    if ! zowe rse-api-for-zowe-cli list uss "$SCRIPT_PARENT_DIR" &> /dev/null; then
-        zowe rse-api-for-zowe-cli create uss-directory "$SCRIPT_PARENT_DIR"
-    else
-        print_info "Parent directory already exists: $SCRIPT_PARENT_DIR"
-    fi
-    
-    # Upload script (with overwrite if confirmed)
-    if zowe rse-api-for-zowe-cli upload file-to-uss "$PIPELINE_SCRIPT_SOURCE" "$PIPELINE_SCRIPT_TARGET" --binary; then
-        # Make script executable
-        print_info "Making script executable..."
-        zowe rse-api-for-zowe-cli issue unix "chmod +x $(basename $PIPELINE_SCRIPT_TARGET)" --cwd "$SCRIPT_PARENT_DIR"
-        
-        print_success "Pipeline simulation script uploaded successfully"
-    else
-        print_error "Failed to upload pipeline simulation script"
-        exit 1
-    fi
-    
-    print_success "Upload completed successfully"
+    print_success "zBuilder framework upload completed successfully"
+    print_info "Note: Pipeline simulation script will be uploaded when you run the 'Run Pipeline Simulation' task"
 }
 
 #########################################################
@@ -402,7 +361,6 @@ main() {
     echo ""
     echo "Next steps:"
     echo "  1. Review the uploaded files on USS"
-    echo "  2. Update the pipeline_simulation.sh script with your environment-specific values"
     echo "  3. Run the pipeline simulation task from VS Code"
     echo ""
 }

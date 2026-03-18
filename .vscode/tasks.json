@@ -29,13 +29,15 @@
         {
             "label": "Run Pipeline Simulation",
             "type": "shell",
-            "command": "zowe",
+            "command": "bash",
             "args": [
-                "rse-api-for-zowe-cli",
-                "issue",
-                "ssh",
-                "\"bash ${input:pipelineScriptPath}\""
+                "${workspaceFolder}/.setup/run_pipeline.sh",
+                "${input:gitRepository}",
+                "${input:gitBranch}"
             ],
+            "options": {
+                "cwd": "${workspaceFolder}/.setup"
+            },
             "presentation": {
                 "echo": true,
                 "reveal": "always",
@@ -49,15 +51,21 @@
                 "kind": "test",
                 "isDefault": false
             },
-            "detail": "Execute the pipeline simulation script on z/OS USS via Zowe CLI"
+            "detail": "Update pipeline script with config values, upload to USS, and execute with git repository and branch"
         }
     ],
     "inputs": [
         {
-            "id": "pipelineScriptPath",
+            "id": "gitRepository",
             "type": "promptString",
-            "description": "Path to pipeline simulation script on USS",
-            "default": "/u/${env:USER}/sandbox/pipeline_simulation.sh"
+            "description": "Git repository URL",
+            "default": "https://github.com/user/repo.git"
+        },
+        {
+            "id": "gitBranch",
+            "type": "promptString",
+            "description": "Git branch name",
+            "default": "main"
         }
     ]
 }
