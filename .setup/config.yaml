@@ -1,0 +1,43 @@
+---
+#########################################################
+# Setup Configuration for Pipeline Simulation
+#########################################################
+version: 1.0.0
+
+# Pipeline workspace configuration
+global:
+  # Base workspace directory on USS
+  sandbox: /u/dbehm/sandbox
+  
+# Git repositories to clone
+repositories:
+  - name: dbb
+    url: https://github.com/IBM/dbb.git
+    target_dir: dbb
+
+# zBuilder framework configuration
+zbuilder:
+  # Local source directory (relative to .setup)
+  source_dir: build
+  
+  # Target USS directory for upload
+  target_dir: /u/dbehm/sandbox/zBuilder
+  
+  # Languages configuration file
+  languages_config: build/languages/Languages.yaml
+
+# Pipeline simulation script
+pipeline_script:
+  # Target USS location
+  target: /u/dbehm/sandbox/pipeline_simulation.sh
+
+  # Local source file
+  source: pipeline_simulation.sh
+  
+  # workspace directory
+  workspace: /u/dbehm/sandbox/workspace
+
+  # Temporary HLQ for datasets
+  tmphlq: DBEHM
+
+# Made with Bob

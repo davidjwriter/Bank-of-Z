@@ -1,0 +1,71 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Setup Pipeline Environment",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "${workspaceFolder}/.setup/setup.sh"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/.setup"
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "detail": "Initialize workspace, clone accelerators, and upload build framework to z/OS USS"
+        },
+        {
+            "label": "Run Pipeline Simulation",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "${workspaceFolder}/.setup/run_pipeline.sh",
+                "${input:gitRepository}",
+                "${input:gitBranch}"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/.setup"
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "problemMatcher": [],
+            "group": {
+                "kind": "test",
+                "isDefault": false
+            },
+            "detail": "Update pipeline script with config values, upload to USS, and execute with git repository and branch"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "gitRepository",
+            "type": "promptString",
+            "description": "Git repository URL",
+            "default": "https://github.com/user/repo.git"
+        },
+        {
+            "id": "gitBranch",
+            "type": "promptString",
+            "description": "Git branch name",
+            "default": "main"
+        }
+    ]
+}

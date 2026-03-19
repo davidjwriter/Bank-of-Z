@@ -1,0 +1,40 @@
+---
+#
+# Licensed materials - Property of IBM
+# 5655-AC5 Copyright IBM Corp. 2024
+# All rights reserved
+# US Government users restricted rights  -  Use, duplication or
+# disclosure restricted by GSA ADP schedule contract with IBM Corp.
+#
+version: 1.0.0
+application:
+  name: cbsa-zos-native
+  tasks:
+    #- task: Cobol
+      # source file association patterns
+    #  variables:
+        # default dependency search path for single repository build
+    #    - name: dependencySearchPath
+    #      value: search:${WORKSPACE}/?path=${APP_DIR_NAME}/copy/*.cpy
+
+    # Variable overrides for the ImpactAnalysis task
+    - task: ImpactAnalysis
+      variables:
+        #- name: printScannedItems
+        #  value: true
+
+        # Associate dependency files to program types. For more information see 
+        # https://www.ibm.com/docs/en/dbb/3.0?topic=index-task-impactanalysis#defining-impact-query-patterns
+        - name: impactQueryPatterns
+          value:
+            # Cobol program dependency patterns
+            - languageExt: cbl      
+              dependencyPatterns: 
+                - ${APP_DIR_NAME}/src/**/*.cpy       # Copybook source dependency
+                - ${APP_DIR_NAME}/src/**/*.bms         # BMS Map source dependency
+                - ${APP_DIR_NAME}/src/**/.cbl         # Static link dependency  
+            # Link card dependency patterns
+            - languageExt: lnk                    
+              dependencyPatterns: 
+                - ${APP_DIR_NAME}/src/**/*.cbl      # Static link dependency
+
