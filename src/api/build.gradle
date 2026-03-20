@@ -3,16 +3,7 @@ plugins {
    id 'com.ibm.zosconnect.gradle' version '1.5.0'
 }
 repositories {
-mavenLocal()
-
-   maven {
-      url "https://eu-public.artifactory.swg-devops.com:443/artifactory/zosconnect-generic-local"
-      
-      credentials {
-        username "${artifactoryUser}"
-        password "${artifactoryApiKey}"
-	  }
-   }
 
    mavenCentral()
+
 }
