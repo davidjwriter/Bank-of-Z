@@ -1,17 +1,6 @@
 
 pluginManagement {
    repositories {
-   mavenLocal()
-
-   maven {
-      url "https://eu-public.artifactory.swg-devops.com:443/artifactory/zosconnect-generic-local"
-      
-      credentials {
-        username "${artifactoryUser}"
-        password "${artifactoryApiKey}"
-	  }
-   }
-
       gradlePluginPortal()
    }
 }
