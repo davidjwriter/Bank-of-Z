@@ -7,3 +7,5 @@ provisioning/
 build.log
 /bin/
 /logs/
+.DS_Store
+src/base/ims/java/src/main/java/nazare/jmp/standalone/*
