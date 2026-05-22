@@ -29,44 +29,55 @@ This setup automates the preparation of your z/OS USS environment for Bank of Z 
 
 ### Option 1: Setup & Install via terminal
 
-**Best for**: Direct USS access, no access to GRUB or ZOWE CLI for Custom Tasks
+**Best for**: Direct USS access, users without access to GRUB or ZOWE CLI for custom tasks
 
 1. SSH to z/OS USS
-```bash
-ssh user@zos-host
-```
+    ```bash
+    ssh user@zos-host
+    ```
 
 1. Define your working directory
-This path will be used for subsequent setup operations:
-```bash
-export BANK_OF_Z_WORK_DIR=/usr/local/sandboxes/bank-of-z
-```
+
+   This path will be used for subsequent setup operations:
+   ```bash
+   export BANK_OF_Z_WORK_DIR=/usr/local/sandboxes/bank-of-z
+   ```
 
 1. Create working directory
+   ```bash
+   mkdir -p $BANK_OF_Z_WORK_DIR
+   ```
 
-This path will be used for subsequent setup operations:
-```bash
-mkdir -p $BANK_OF_Z_WORK_DIR
-```
+1. Clone repository
+   ```bash
+   cd $BANK_OF_Z_WORK_DIR
+   git clone https://github.com/ibm/Bank-of-Z.git
+   cd Bank-of-Z
+   ```
 
-2. Clone repository
-```bash
-cd $BANK_OF_Z_WORK_DIR
-git clone https://github.com/IBM/Bank-of-Z.git
-cd Bank-of-Z
-```
+1. Edit configuration according to your environment setup
 
-3. Edit configuration according to your environment setup
+   Feel free to use ZOWE Explorer or other ways to edit the configuration file.
+   ```bash
+   vi .setup/config/config.yaml
+   ```
 
-Feel free to use ZOWE Explorer or other ways to edit the configuration file.
-```bash
-vi .setup/config/config.yaml
-```
+1. Validate prerequisites
+   ```bash
+   .setup/setup-common.sh validate-prereqs
+   ```
 
-4. Run initial tool setup
-```bash
-.setup/setup-common.sh
-```
+1. Run setup of middleware systems
+   This setups db2 tables and a new CICS region via zConfig
+    ```bash
+    .setup/setup-common.sh environment
+    ```
+
+1. Run setup of working
+   Building and deploying the Bank of Z application as a baseline to the provisioned system
+    ```bash
+    .setup/setup-common.sh install-bank-of-z
+    ```
 
 ### Option 1: GRUB Workflow (Recommended for Active Development)
 
