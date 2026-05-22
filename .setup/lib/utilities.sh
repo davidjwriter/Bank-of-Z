@@ -305,7 +305,7 @@ return 8
 #
 # Behavior:
 #   - Verifies that CONFIG_FILE exists
-#   - Loads PIPELINE_WORKSPACE from:
+#   - Loads BANK_OF_Z_WORK_DIR from:
 #       1. Function argument if provided
 #       2. YAML config otherwise
 #
@@ -327,17 +327,15 @@ load_config() {
         exit 1
     fi
 
-    # Use explicit workspace if provided
-    if [[ -n "$1" ]]; then
-        PIPELINE_WORKSPACE="$1"
-    else
+    # Use provided workspace if available
+    if [! -f "$BANK_OF_Z_WORK_DIR" ]; then
         # Otherwise read from YAML configuration
-        PIPELINE_WORKSPACE=$(get_section_value 'sandbox' 'path')
+        BANK_OF_Z_WORK_DIR=$(get_section_value 'sandbox' 'path')
     fi
 
     print_success "Configuration loaded successfully"
 
-    echo "  Workspace: $PIPELINE_WORKSPACE"
+    echo "  Workspace: $BANK_OF_Z_WORK_DIR"
 }
 
 
@@ -355,7 +353,7 @@ load_config() {
 #    - Triggered when not running inside a Git repository.
 #    - Assumes execution is orchestrated externally
 #      (e.g. VSCode task, CI pipeline, remote runner).
-#    - Uses PIPELINE_WORKSPACE if provided, otherwise the
+#    - Uses BANK_OF_Z_WORK_DIR if provided, otherwise the
 #      current working directory.
 #
 # This function initializes:
@@ -383,7 +381,7 @@ detect_execution_mode() {
         # Not in a git repo, assume VSCode workflow with cloned repo
         EXECUTION_MODE="vscode"
         # Workspace should be set by orchestrator or use current directory
-        WORKSPACE_DIR="${PIPELINE_WORKSPACE:-$(pwd)}"
+        WORKSPACE_DIR="${BANK_OF_Z_WORK_DIR:-$(pwd)}"
         print_info "Execution mode: VSCode (orchestrated)"
     fi
     

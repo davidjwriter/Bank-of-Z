@@ -18,14 +18,55 @@ This setup automates the preparation of your z/OS USS environment for Bank of Z 
 - z/OS USS access with appropriate permissions
 - Git installed on z/OS USS
 - Network connectivity to GitHub
-- Configured `.setup/config/config.yaml`
+- Main configuration file `.setup/config/config.yaml`
 
-### Additional for VSCode Task Workflow
+### Additionally for VSCode Task Workflows
 - Zowe CLI installed: `npm install -g @zowe/cli`
 - Zowe RSE API plugin: `zowe plugins install @zowe/rse-api-for-zowe-cli`
 - Configured Zowe profile for your z/OS system
 
 ## 🚀 Quick Start
+
+### Option 1: Setup & Install via terminal
+
+**Best for**: Direct USS access, no access to GRUB or ZOWE CLI for Custom Tasks
+
+1. SSH to z/OS USS
+```bash
+ssh user@zos-host
+```
+
+1. Define your working directory
+This path will be used for subsequent setup operations:
+```bash
+export BANK_OF_Z_WORK_DIR=/usr/local/sandboxes/bank-of-z
+```
+
+1. Create working directory
+
+This path will be used for subsequent setup operations:
+```bash
+mkdir -p $BANK_OF_Z_WORK_DIR
+```
+
+2. Clone repository
+```bash
+cd $BANK_OF_Z_WORK_DIR
+git clone https://github.com/IBM/Bank-of-Z.git
+cd Bank-of-Z
+```
+
+3. Edit configuration according to your environment setup
+
+Feel free to use ZOWE Explorer or other ways to edit the configuration file.
+```bash
+vi .setup/config/config.yaml
+```
+
+4. Run initial tool setup
+```bash
+.setup/setup-common.sh
+```
 
 ### Option 1: GRUB Workflow (Recommended for Active Development)
 
@@ -55,25 +96,6 @@ Choose: "Setup Bank of Z Environment"
 The task runs [`setup-local.sh`](.setup/setup-local.sh:1) which orchestrates the remote setup via Zowe CLI.
 
 📖 [Detailed VSCode Guide →](docs/WORKFLOW-VSCODE.md)
-
-### Option 3: Manual USS Execution
-
-**Best for**: Direct USS access or troubleshooting
-
-```bash
-# 1. SSH to z/OS USS
-ssh user@zos-host
-
-# 2. Clone repository
-git clone https://github.com/IBM/Bank-of-Z.git
-cd Bank-of-Z
-
-# 3. Edit configuration
-vi .setup/config/config.yaml
-
-# 4. Run setup
-bash .setup/setup-common.sh
-```
 
 ## ⚙️ Configuration
 

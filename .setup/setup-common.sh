@@ -25,16 +25,16 @@ source "$SCRIPTS_DIR/config/setenv.sh"
 stage_initialize_workspace() {
     print_stage "STAGE: Initialize Working Directory"
     
-    print_info "Target workspace: $PIPELINE_WORKSPACE"
+    print_info "Target workspace: $BANK_OF_Z_WORK_DIR"
     
     # Check if directory exists
-    if [ -d "$PIPELINE_WORKSPACE" ]; then
-        print_warning "Workspace directory already exists: $PIPELINE_WORKSPACE"
+    if [ -d "$BANK_OF_Z_WORK_DIR" ]; then
+        print_warning "Workspace directory already exists: $BANK_OF_Z_WORK_DIR"
         read -p "Do you want to delete and recreate it? (y/N): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             print_info "Deleting existing workspace directory..."
-            rm -rf "$PIPELINE_WORKSPACE"
+            rm -rf "$BANK_OF_Z_WORK_DIR"
             print_success "Existing workspace deleted"
         else
             print_info "Keeping existing workspace directory"
@@ -43,8 +43,8 @@ stage_initialize_workspace() {
     fi
     
     # Create workspace directory
-    print_info "Creating workspace directory: $PIPELINE_WORKSPACE"
-    mkdir -p "$PIPELINE_WORKSPACE"
+    print_info "Creating workspace directory: $BANK_OF_Z_WORK_DIR"
+    mkdir -p "$BANK_OF_Z_WORK_DIR"
     
     # Purge DBB metadata cache
     if [ -d "$HOME/.dbb" ]; then
@@ -52,7 +52,7 @@ stage_initialize_workspace() {
         print_success "DBB metadata cache purged"
     fi
     
-    print_success "Workspace directory initialized: $PIPELINE_WORKSPACE"
+    print_success "Workspace directory initialized: $BANK_OF_Z_WORK_DIR"
 }
 
 #########################################################
@@ -63,7 +63,7 @@ stage_clone_accelerators() {
     
     print_info "Cloning DBB repository..."
     print_info "Repository: $DBB_REPO_URL"
-    print_info "Target: $PIPELINE_WORKSPACE/dbb"
+    print_info "Target: $BANK_OF_Z_WORK_DIR/dbb"
     
     # Check if git is available
     print_info "Checking git availability..."
@@ -75,17 +75,17 @@ stage_clone_accelerators() {
     print_success "Git is available"
     
     # Check if dbb directory already exists
-    if [ -d "$PIPELINE_WORKSPACE/dbb" ]; then
+    if [ -d "$BANK_OF_Z_WORK_DIR/dbb" ]; then
         if [[ "$EXECUTION_MODE" == "grub" ]]; then
-            rm -rf "$PIPELINE_WORKSPACE/dbb"
+            rm -rf "$BANK_OF_Z_WORK_DIR/dbb"
             print_success "Existing dbb directory removed"
         else
-            print_warning "DBB directory already exists: $PIPELINE_WORKSPACE/dbb"
+            print_warning "DBB directory already exists: $BANK_OF_Z_WORK_DIR/dbb"
             read -p "Do you want to delete and re-clone it? (y/N): " -n 1 -r
             echo
             if [[ $REPLY =~ ^[Yy]$ ]]; then
                 print_info "Removing existing dbb directory..."
-                rm -rf "$PIPELINE_WORKSPACE/dbb"
+                rm -rf "$BANK_OF_Z_WORK_DIR/dbb"
                 print_success "Existing dbb directory removed"
             else
                 print_info "Keeping existing dbb directory"
@@ -96,7 +96,7 @@ stage_clone_accelerators() {
     
     # Clone repository
     print_info "Cloning repository (this may take a few minutes)..."
-    cd "$PIPELINE_WORKSPACE"
+    cd "$BANK_OF_Z_WORK_DIR"
     if git clone "$DBB_REPO_URL"; then
         print_success "DBB repository cloned successfully"
     else
@@ -109,7 +109,7 @@ stage_clone_accelerators() {
     fi
     
     # Verify the clone
-    if [ -d "$PIPELINE_WORKSPACE/dbb" ]; then
+    if [ -d "$BANK_OF_Z_WORK_DIR/dbb" ]; then
         print_success "Repository verification successful"
     else
         print_error "Repository verification failed"
@@ -208,7 +208,7 @@ stage_setup_bank_of_z() {
     
     # If not in repo, use the cloned version in workspace
     if [ "$IN_REPO" = false ]; then
-        BANK_DIR="$PIPELINE_WORKSPACE/Bank-of-Z"
+        BANK_DIR="$BANK_OF_Z_WORK_DIR/Bank-of-Z"
         print_info "Using cloned repository at: $BANK_DIR"
         
         if [ ! -d "$BANK_DIR" ]; then
@@ -242,13 +242,46 @@ stage_setup_bank_of_z() {
 }
 
 #########################################################
+# Main execution helpers
+#########################################################
+print_phase_next_step() {
+    local completed_phase="$1"
+
+    echo ""
+    case "$completed_phase" in
+        validation)
+            print_info "Next step: run this script in setup mode to initialize the workspace and infrastructure prerequisites."
+            ;;
+        setup)
+            print_info "Next step: run this script in build-baseline mode to build and deploy the Bank of Z baseline."
+            ;;
+        build-baseline)
+            print_info "Next step: baseline deployment is complete. Proceed with application verification or follow-on customization."
+            ;;
+    esac
+}
+
+print_usage() {
+    echo "Usage: bash setup-common.sh <phase>"
+    echo ""
+    echo "Phases:"
+    echo "  validation      Validate prerequisites (zConfig, DBB, wazi-deploy)"
+    echo "  setup           Initialize workspace and infrastructure prerequisites"
+    echo "  build-baseline  Build and deploy the Bank of Z baseline"
+    echo ""
+    echo "Examples:"
+    echo "  bash setup-common.sh validation"
+    echo "  bash setup-common.sh setup"
+    echo "  bash setup-common.sh build-baseline"
+}
+
+#########################################################
 # Main execution
 #########################################################
-main() {
+main_setup() {
     echo ""
-    
-    print_info "This script runs directly on z/OS USS"
-    print_info "Execution mode: Native USS commands"
+    SYS=$(uname -Ia)
+    print_info "Running on: $SYS"
     echo ""
     
     # Detect Execution Mode
@@ -260,12 +293,63 @@ main() {
     fi
     stage_clone_accelerators
     stage_copy_framework
-    stage_setup_bank_of_z
     
     # Summary
     print_stage "SETUP COMPLETE"
     print_success "Environment setup completed successfully!"
-    
+    print_phase_next_step "setup"
+}
+
+main_validation() {
+    echo ""
+    SYS=$(uname -Ia)
+    print_info "Running on: $SYS"
+    echo ""
+
+    # Summary
+    print_stage "VALIDATION COMPLETE"
+    print_success "Environment validation completed successfully!"
+    print_phase_next_step "validation"
+}
+
+main_build_baseline() {
+
+    echo ""
+    SYS=$(uname -Ia)
+    print_info "Running on: $SYS"
+    echo ""
+
+    stage_setup_bank_of_z
+
+    # Summary
+    print_stage "BUILD BASELINE COMPLETE"
+    print_success "Bank of Z baseline built and deployed successfully!"
+    print_phase_next_step "build-baseline"
+}
+
+main() {
+    local phase="${1:-}"
+
+    case "$phase" in
+        validation)
+            main_validation
+            ;;
+        setup)
+            main_setup
+            ;;
+        build-baseline)
+            main_build_baseline
+            ;;
+        -h|--help|help|"")
+            print_usage
+            ;;
+        *)
+            print_error "Unknown phase: $phase"
+            echo ""
+            print_usage
+            exit 1
+            ;;
+    esac
 }
 
 # Run main function

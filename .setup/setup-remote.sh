@@ -36,7 +36,7 @@ stage_execute_common_setup() {
     # Execute the common setup script on remote
     print_info "Running: bash .setup/setup-common.sh"
     
-    if ${SCRIPTS_DIR}/setup-common.sh $PIPELINE_WORKSPACE; then
+    if ${SCRIPTS_DIR}/setup-common.sh $BANK_OF_Z_WORK_DIR; then
         print_success "Remote setup completed successfully"
     else
         print_error "Failed to execute setup on remote system"
@@ -70,7 +70,7 @@ main() {
     
     # Save environment info locally
     cat > "$SCRIPTS_DIR/.env" << EOF
-PIPELINE_WORKSPACE=$PIPELINE_WORKSPACE
+BANK_OF_Z_WORK_DIR=$BANK_OF_Z_WORK_DIR
 SETUP_DATE=$(date)
 SETUP_USER=$USER
 SETUP_MODE=local-orchestrator
@@ -79,7 +79,7 @@ EOF
     
     echo ""
     echo "Next steps:"
-    echo "  1. Review the setup on remote USS: $PIPELINE_WORKSPACE"
+    echo "  1. Review the setup on remote USS: $BANK_OF_Z_WORK_DIR"
     echo "  2. Check the Bank of Z installation"
     echo "  3. Connect to CICS using x3270:"
     echo "     - Enter 'logon applid(CICSBOZ)'"
