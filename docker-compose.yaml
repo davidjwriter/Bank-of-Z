@@ -1,7 +1,7 @@
 version: "3.2"
 services:
   zosConnect:
-    image: icr.io/zosconnect/ibm-zcon-designer:3.0.101
+    image: icr.io/zosconnect/ibm-zcon-designer:3.0.103
     environment:
       - CICS_USER=
       - CICS_PASSWORD=
@@ -24,7 +24,7 @@ services:
       - bank-network
 
   frontend:
-    image: node:18-alpine
+    image: node:24-alpine
     working_dir: /app
     command: node server.js
     environment:

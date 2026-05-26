@@ -152,6 +152,9 @@ stage_clone_bank_of_z() {
 stage_execute_common_setup() {
     print_stage "STAGE: Execute Common Setup Script on Remote"
     
+    # Define BANK_DIR
+    BANK_DIR="$PIPELINE_WORKSPACE/Bank-of-Z"
+    
     print_info "Executing setup-common.sh on remote z/OS USS..."
     print_info "This will:"
     print_info "  - Initialize workspace"
@@ -161,7 +164,7 @@ stage_execute_common_setup() {
     echo ""
     
     # Execute the common setup script on remote
-    print_info "Running: bash .setup/setup-common.sh"
+    print_info "Running: bash $BANK_DIR/.setup/setup-common.sh $PIPELINE_WORKSPACE"
     
     set -o pipefail
     if zowe rse-api-for-zowe-cli issue unix-shell "bash  $BANK_DIR/.setup/setup-common.sh $BANK_OF_Z_WORK_DIR" --cwd "$BANK_OF_Z_WORK_DIR" 2>&1 | tee /tmp/remote-setup.log; then

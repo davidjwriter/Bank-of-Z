@@ -1,5 +1,5 @@
 #!/bin/env bash
-set -eu
+set -e
 # =============================================================================
 # Script  : setup-zosconnect-server.sh
 # Summary : Create and configure z/OS Connect Server
@@ -7,9 +7,9 @@ set -eu
 # Runs on the remote z/OS USS system after the workspace has been cloned.
 # - Creates z/OS Connect server instance
 # - Configures RACF STARTED profile
-# - Deploys API WAR file
 # - Generates server JCL proc in SYS1.PROCLIB
-# - Starts the server
+#
+# NOTE: Deployment of WAR files and configuration is handled by Wazi Deploy
 # =============================================================================
 
 # =========================
@@ -27,6 +27,7 @@ export CICS_USER=${CICS_USER:-$(get_section_value 'cics' 'user')}
 export CICS_PASSWORD=${CICS_PASSWORD:-$(get_section_value 'cics' 'password')}
 export JAVA_HOME=$(get_section_value 'zconfig' 'java_home')
 export ZOAU_HOME=${ZOAU_HOME:-$(get_section_value 'zoau' 'zoau_home')}
+export CICS_IPIC_PORT=$(get_section_value 'cics' 'ipic_port')
 
 export PATH="$ZOAU_HOME/bin:$PATH"
 export LIBPATH="$ZOAU_HOME/lib:${LIBPATH:-}"
@@ -57,49 +58,33 @@ fi
 # =========================
 # Configure RACF STARTED profile
 # =========================
+print_info "${CYAN}[ZOSCONNECT]${NC} Configuring RACF STARTED profile..."
 set +e
-opercmd "C BAQ${APP_BASE_NAME}" & 2>/dev/null
+opercmd "C BAQ${APP_BASE_NAME}" 2>/dev/null &
 sleep 5
-tsocmd "RDEFINE STARTED BAQ${APP_BASE_NAME}.* STDATA(USER(IBMUSER) TRUSTED(YES))"
-tsocmd "SETROPTS RACLIST(STARTED) REFRESH"
-mrm "SYS1.PROCLIB(BAQ${APP_BASE_NAME})"
+print_info "${CYAN}[ZOSCONNECT]${NC} Defining RACF STARTED class..."
+tsocmd "RDEFINE STARTED BAQ${APP_BASE_NAME}.* STDATA(USER(IBMUSER) TRUSTED(YES))" 2>/dev/null
+print_info "${CYAN}[ZOSCONNECT]${NC} Refreshing RACF..."
+tsocmd "SETROPTS RACLIST(STARTED) REFRESH" 2>/dev/null
+print_info "${CYAN}[ZOSCONNECT]${NC} Removing old PROCLIB member..."
+mrm "SYS1.PROCLIB(BAQ${APP_BASE_NAME})" 2>/dev/null || true
 set -e
-
-# =========================
-# Deploy API WAR file
-# =========================
-cp "${SANDBOX_DIR}/zDevOps/applications/${APP_BASE_NAME}/application/src/logs/package/war/${APP_BASE_NAME_LOWER}-api.war" \
-   "${SANDBOX_DIR}/zosconnect-server/servers/${APP_BASE_NAME_LOWER}Server/apps"
-
-echo "<server><webApplication id=\"${APP_BASE_NAME_LOWER}-api\" location=\"\${server.config.dir}/apps/${APP_BASE_NAME_LOWER}-api.war\" name=\"${APP_BASE_NAME_LOWER}-api\" contextRoot=\"/${APP_BASE_NAME_LOWER}-api\"/></server>" \
-    > "${SANDBOX_DIR}/zosconnect-server/servers/${APP_BASE_NAME_LOWER}Server/configDropins/overrides/${APP_BASE_NAME_LOWER}-api.xml"
-
-# =========================
-# Generate CICS connection config
-# =========================
-cat > "${SANDBOX_DIR}/zosconnect-server/servers/${APP_BASE_NAME_LOWER}Server/configDropins/overrides/cics.xml" << EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<server description="IPIC connection to CICS">
-    <featureManager>
-        <feature>zosconnect:cics-1.0</feature>
-    </featureManager>
-    <zosconnect_cicsIpicConnection id="${APP_BASE_NAME_LOWER}CicsConnection" host="127.0.0.1" port="4321" sysid="ZC01" authDataRef="cicsCredentials" />
-    <zosconnect_authData id="cicsCredentials" user="${CICS_USER}" password="${CICS_PASSWORD}" />
-</server>
-EOF
+print_info "${CYAN}[ZOSCONNECT]${NC} Generating JCL proc..."
 
 # =========================
 # Generate server JCL proc
 # =========================
-cat > "/tmp/BAQ${APP_BASE_NAME}.jcl" << EOF
-//BAQ${APP_BASE_NAME}  PROC PARMS='${APP_BASE_NAME_LOWER}Server --clean'
+# Create JCL with each line padded to exactly 80 characters for FB80 dataset
+cat > "/tmp/BAQ${APP_BASE_NAME}.jcl" << 'EOF'
+//BAQBANKZ  PROC PARMS='bankzServer --clean'
 //*
 //* z/OS Connect Enterprise Edition 3.0.0
 //* Start the Liberty server
 //*
 // SET ZCONHOME='/usr/lpp/IBM/zosconnect'
 //*
-//BAQ${APP_BASE_NAME}     EXEC PGM=BPXBATSL,REGION=0M,MEMLIMIT=4G,TIME=NOLIMIT,
+//BAQBANKZ     EXEC PGM=BPXBATSL,REGION=0M,MEMLIMIT=4G,
+//    TIME=NOLIMIT,
 //    PARM='PGM &ZCONHOME./bin/zosconnect run &PARMS.'
 //STDOUT   DD   SYSOUT=*
 //STDERR   DD   SYSOUT=*
@@ -107,21 +92,44 @@ cat > "/tmp/BAQ${APP_BASE_NAME}.jcl" << EOF
 //STDENV   DD   *
 _BPX_SHAREAS=YES
 JAVA_HOME=/usr/lpp/java/java21/current_64
-WLP_USER_DIR=${SANDBOX_DIR}/zosconnect-server
+WLP_USER_DIR=/usr/local/sandboxes/bank-of-z/zosconnect-server
 JVM_OPTIONS=-Xmx2048M
-#JVM_OPTIONS=<Optional JVM parameters>
 //*
 // PEND
 //*
 EOF
 
+# Convert to EBCDIC
 a2e -f ISO8859-1 -t IBM-1047 "/tmp/BAQ${APP_BASE_NAME}.jcl"
-chtag -r "/tmp/BAQ${APP_BASE_NAME}"
-dcp "/tmp/BAQ${APP_BASE_NAME}" "SYS1.PROCLIB(BAQ${APP_BASE_NAME})"
+
+# Copy to PROCLIB using dcp
+print_info "${CYAN}[ZOSCONNECT]${NC} Copying JCL to SYS1.PROCLIB..."
+dcp "/tmp/BAQ${APP_BASE_NAME}.jcl" "SYS1.PROCLIB(BAQ${APP_BASE_NAME})"
+
+# Clean up temp files
+rm -f "/tmp/BAQ${APP_BASE_NAME}.jcl"
 
 # =========================
-# Start server
+# Generate CICS connection config
 # =========================
-opercmd "S BAQ${APP_BASE_NAME}" & 2>/dev/null
-sleep 10
-print_success "z/OS Connect server started successfully"
+cat > "${WLP_USER_DIR}/servers/${APP_BASE_NAME_LOWER}Server/configDropins/overrides/cics.xml" << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<server description="IPIC connection to CICS">
+    <featureManager>
+        <feature>zosconnect:cics-1.0</feature>
+    </featureManager>
+    <zosconnect_cicsIpicConnection id="${APP_BASE_NAME_LOWER}CicsConnection" host="127.0.0.1" port="${CICS_IPIC_PORT}" sysid="ZC01" authDataRef="cicsCredentials" />
+    <zosconnect_authData id="cicsCredentials" user="${CICS_USER}" password="${CICS_PASSWORD}" />
+</server>
+EOF
+
+sed \
+  's#^\([[:space:]]*<webApplication id="My API".*\)$#<!-- \1 -->#' \
+   ${WLP_USER_DIR}/servers/${APP_BASE_NAME_LOWER}Server/server.xml > /tmp/server.xml.tmp && mv /tmp/server.xml.tmp\
+   ${WLP_USER_DIR}/servers/${APP_BASE_NAME_LOWER}Server/server.xml
+
+opercmd "S BAQ${APP_BASE_NAME}" 2>/dev/null &
+sleep 5
+print_success "z/OS Connect server setup completed"
+
+# Made with Bob

@@ -1,12 +1,12 @@
 #!/bin/env bash
 set -e
 # =============================================================================
-# Script  : setup-db2-tables.sh
-# Summary : DB2 table creation
+# Script  : populate-db2-tables.sh
+# Summary : DB2 table populate
 #
 # Runs on the remote z/OS USS system after the workspace has been cloned.
-# - Drops existing tables
-# - Creates tables
+# - Binds packages and Grant
+# - Inserts initial data
 # =============================================================================
 
 # =========================
@@ -24,11 +24,11 @@ export PATH="$ZOAU_HOME/bin:$PATH"
 export LIBPATH="$ZOAU_HOME/lib:${LIBPATH:-}"
 
 # =========================
-# Create DB2 tables
+# Populate DB2 tables
 # =========================
-run_job_and_wait "$SCRIPTS_DIR/../jcl/Db2-drop.jcl" "8"&
+run_job_and_wait "$SCRIPTS_DIR/../jcl/Db2-bind.jcl"&
 # Wait for deployment to complete (ZOAU ISSUE)
 wait $PID
-run_job_and_wait "$SCRIPTS_DIR/../jcl/Db2-create.jcl"&
+run_job_and_wait "$SCRIPTS_DIR/../jcl/Db2-insert.jcl"&
 # Wait for deployment to complete (ZOAU ISSUE)
 wait $PID
