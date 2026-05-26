@@ -30,6 +30,8 @@ export ZBUILDER_TARGET=$(get_section_value 'zbuilder' 'target_dir')
 export _BPXK_AUTOCVT=ON
 
 # =========================
-# Load configuration
+# Zowe Configuration
 # =========================
-load_config "$*"
+export ZOWE_RSE_PROFILE=$(get_section_value 'zowe' 'rse_profile')
+export RSE_PROFILE_ARG="--rse-profile ${ZOWE_RSE_PROFILE}"
+

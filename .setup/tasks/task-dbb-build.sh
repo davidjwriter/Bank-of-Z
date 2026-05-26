@@ -32,10 +32,22 @@ export DBB_APP_CONF=$(get_section_value 'dbb' 'dbb_app_conf')
 export DBB_LOG_FOLDER=$(get_section_value 'dbb' 'dbb_log_dir')
 export JAVA_HOME=$(get_section_value 'dbb' 'java_home')
 export API_BASE=$(get_section_value 'dbb' 'api_base')
-
 export PATH="$JAVA_HOME/bin:$DBB_HOME/bin:$PATH"
 export GRADLE_USER_HOME="$(get_section_value 'sandbox' 'path')/.gradle"
 export GRADLE_OPTS="-Dfile.encoding=UTF-8"
+
+# =========================
+# Tag Groovy scripts with proper encoding
+# =========================
+print_info "Tagging Groovy scripts with UTF-8 encoding..."
+GROOVY_DIR="$SCRIPTS_DIR/../build/groovy"
+if [ -d "$GROOVY_DIR" ]; then
+    # Tag all .groovy files as UTF-8
+    find "$GROOVY_DIR" -name "*.groovy" -type f -exec chtag -tc UTF-8 {} \; 2>/dev/null || true
+    print_success "Groovy scripts tagged with UTF-8 encoding"
+else
+    print_warning "Groovy directory not found at: $GROOVY_DIR"
+fi
 
 # =========================
 # Temporary log
