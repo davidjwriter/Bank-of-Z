@@ -372,6 +372,11 @@ main() {
         install-bank-of-z)
             main_build_baseline
             ;;
+        all)
+            main_validation
+            main_setup
+            main_build_baseline
+            ;;
         -h|--help|help|"")
             print_usage
             ;;
@@ -386,5 +391,6 @@ main() {
 
 # Run main function
 main "$@"
+exit $?
 
 # Made with Bob
