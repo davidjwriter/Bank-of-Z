@@ -185,7 +185,7 @@ The common script detects the VSCode workflow:
 if [ "$IN_REPO" = false ]; then
     # VSCode workflow detected!
     # Use cloned repository at workspace
-    BANK_DIR="$PIPELINE_WORKSPACE/Bank-of-Z"
+    BANK_DIR="$BANK_OF_Z_WORK_DIR/Bank-of-Z"
 fi
 ```
 

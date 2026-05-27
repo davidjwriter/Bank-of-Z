@@ -18,46 +18,24 @@ set -e  # Exit on error
 SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPTS_DIR/config/setenv.sh"
 
-# =========================
-# Load configuration
-# =========================
-load_config() {
-    print_info "Loading configuration from $CONFIG_FILE..."
-    
-    if [ ! -f "$CONFIG_FILE" ]; then
-        print_error "Configuration file not found: $CONFIG_FILE"
-        exit 1
-    fi
-    
-    # Parse configuration values
-    if [[ -n "$1" ]]; then
-        PIPELINE_WORKSPACE="$1"
-    else
-        PIPELINE_WORKSPACE=$(get_section_value 'sandbox' 'path')
-    fi
-    
-    print_success "Configuration loaded successfully"
-    echo "  Workspace: $PIPELINE_WORKSPACE"
-}
-
 #########################################################
 # STAGE: Initialize Remote Workspace
 #########################################################
 stage_initialize_remote_workspace() {
     print_stage "STAGE: Initialize Remote Workspace"
     
-    print_info "Target workspace: $PIPELINE_WORKSPACE"
+    print_info "Target workspace: $BANK_OF_Z_WORK_DIR"
     
     # Check if directory exists on remote system
     print_info "Checking if workspace directory exists on remote system..."
     
-    if zowe rse-api-for-zowe-cli list uss "$PIPELINE_WORKSPACE" $RSE_PROFILE_ARG &> /dev/null; then
-        print_warning "Workspace directory already exists: $PIPELINE_WORKSPACE"
+    if zowe rse-api-for-zowe-cli list uss "$BANK_OF_Z_WORK_DIR" &> /dev/null; then
+        print_warning "Workspace directory already exists: $BANK_OF_Z_WORK_DIR"
         read -p "Do you want to delete and recreate it? (y/N): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             print_info "Deleting existing workspace directory..."
-            zowe rse-api-for-zowe-cli delete uss "$PIPELINE_WORKSPACE" $RSE_PROFILE_ARG
+            zowe rse-api-for-zowe-cli delete uss "$BANK_OF_Z_WORK_DIR"
             print_success "Existing workspace deleted"
         else
             print_info "Keeping existing workspace directory"
@@ -66,10 +44,10 @@ stage_initialize_remote_workspace() {
     fi
     
     # Create workspace directory
-    print_info "Creating workspace directory on remote: $PIPELINE_WORKSPACE"
-    zowe rse-api-for-zowe-cli create uss-directory "$PIPELINE_WORKSPACE" $RSE_PROFILE_ARG
+    print_info "Creating workspace directory on remote: $BANK_OF_Z_WORK_DIR"
+    zowe rse-api-for-zowe-cli create uss-directory "$BANK_OF_Z_WORK_DIR"
     
-    print_success "Remote workspace directory initialized: $PIPELINE_WORKSPACE"
+    print_success "Remote workspace directory initialized: $BANK_OF_Z_WORK_DIR"
 }
 
 #########################################################
@@ -91,7 +69,7 @@ stage_clone_bank_of_z() {
     
     # Check if git is available on remote
     print_info "Checking git availability on remote system..."
-    if ! zowe rse-api-for-zowe-cli issue unix "which git" --cwd "$PIPELINE_WORKSPACE" $RSE_PROFILE_ARG &> /dev/null; then
+    if ! zowe rse-api-for-zowe-cli issue unix "which git" --cwd "$BANK_OF_Z_WORK_DIR" &> /dev/null; then
         print_error "Git is not available on the remote z/OS system"
         print_info "Please ensure git is installed and in the PATH on z/OS USS"
         exit 1
@@ -100,13 +78,13 @@ stage_clone_bank_of_z() {
     
     # Check if Bank-of-Z already exists
     print_info "Checking if Bank-of-Z directory already exists..."
-    if zowe rse-api-for-zowe-cli list uss "$PIPELINE_WORKSPACE/Bank-of-Z" $RSE_PROFILE_ARG &> /dev/null; then
-        print_warning "Bank-of-Z directory already exists: $PIPELINE_WORKSPACE/Bank-of-Z"
+    if zowe rse-api-for-zowe-cli list uss "$BANK_OF_Z_WORK_DIR/Bank-of-Z" &> /dev/null; then
+        print_warning "Bank-of-Z directory already exists: $BANK_OF_Z_WORK_DIR/Bank-of-Z"
         read -p "Do you want to delete and re-clone it? (y/N): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             print_info "Removing existing Bank-of-Z directory..."
-            zowe rse-api-for-zowe-cli issue unix "rm -rf Bank-of-Z" --cwd "$PIPELINE_WORKSPACE" $RSE_PROFILE_ARG
+            zowe rse-api-for-zowe-cli issue unix "rm -rf Bank-of-Z" --cwd "$BANK_OF_Z_WORK_DIR"
             print_success "Existing Bank-of-Z directory removed"
         else
             print_info "Keeping existing Bank-of-Z directory"
@@ -116,15 +94,16 @@ stage_clone_bank_of_z() {
     fi
     
     # Clone Bank of Z repository
-    print_info "Cloning Bank of Z repository on remote (branch: $current_branch)..."
+    current_repo=$(git config --get remote.origin.url | sed -E 's#git@([^:]+):#https://\1/#')
+    print_info "Cloning $current_repo on remote (branch: $current_branch)..."
     print_info "This may take a few minutes..."
     
-    if zowe rse-api-for-zowe-cli issue unix-shell "git clone https://github.com/IBM/Bank-of-Z.git -b $current_branch" --cwd "$PIPELINE_WORKSPACE" $RSE_PROFILE_ARG 2>&1 | tee /tmp/clone.log; then
+    if zowe rse-api-for-zowe-cli issue unix-shell "git clone $current_repo -b $current_branch" --cwd "$BANK_OF_Z_WORK_DIR" 2>&1 | tee /tmp/clone.log; then
         print_success "Bank of Z cloned successfully on remote system"
     else
         # Try with main branch if current branch fails
         print_warning "Failed to clone branch '$current_branch', trying 'main' branch..."
-        if zowe rse-api-for-zowe-cli issue unix-shell "git clone https://github.com/IBM/Bank-of-Z.git" --cwd "$PIPELINE_WORKSPACE" $RSE_PROFILE_ARG 2>&1 | tee /tmp/clone.log; then
+        if zowe rse-api-for-zowe-cli issue unix-shell "git clone $current_repo" --cwd "$BANK_OF_Z_WORK_DIR" 2>&1 | tee /tmp/clone.log; then
             print_success "Bank of Z cloned successfully (main branch)"
         else
             print_error "Failed to clone Bank of Z repository on remote system"
@@ -138,7 +117,7 @@ stage_clone_bank_of_z() {
     
     # Verify the clone
     print_info "Verifying cloned repository..."
-    if zowe rse-api-for-zowe-cli list uss "$PIPELINE_WORKSPACE/Bank-of-Z" $RSE_PROFILE_ARG &> /dev/null; then
+    if zowe rse-api-for-zowe-cli list uss "$BANK_OF_Z_WORK_DIR/Bank-of-Z" &> /dev/null; then
         print_success "Repository verification successful"
     else
         print_error "Repository verification failed"
@@ -167,11 +146,12 @@ stage_execute_common_setup() {
     print_info "Running: bash $BANK_DIR/.setup/setup-common.sh $PIPELINE_WORKSPACE"
     
     set -o pipefail
-    if zowe rse-api-for-zowe-cli issue unix-shell "bash $BANK_DIR/.setup/setup-common.sh $PIPELINE_WORKSPACE" --cwd "$PIPELINE_WORKSPACE" $RSE_PROFILE_ARG 2>&1 | tee /tmp/remote-setup.log; then
+    if zowe rse-api-for-zowe-cli issue unix-shell "export BANK_OF_Z_WORK_DIR=$BANK_OF_Z_WORK_DIR && bash  $BANK_OF_Z_WORK_DIR/Bank-of-Z/.setup/setup-common.sh all" --cwd "$BANK_OF_Z_WORK_DIR" 2>&1 | tee /tmp/remote-setup.log; then
         # Check for errors in the log
         if grep -i "error\|failed" /tmp/remote-setup.log | grep -v "Failed to change files and directory owner with chown" > /dev/null; then
-            print_warning "Setup completed but some warnings were detected"
+            print_error "Setup completed but some warnings were detected"
             print_info "Review /tmp/remote-setup.log for details"
+            exit 1
         else
             print_success "Remote setup completed successfully"
         fi
@@ -200,7 +180,7 @@ main() {
     check_zowe_cli
     
     # Load configuration
-    load_config "$1"
+    load_config
     
     # Execute stages
     stage_initialize_remote_workspace
@@ -211,18 +191,9 @@ main() {
     print_stage "ORCHESTRATION COMPLETE"
     print_success "Remote environment setup completed successfully!"
     
-    # Save environment info locally
-    cat > "$SCRIPTS_DIR/.env" << EOF
-PIPELINE_WORKSPACE=$PIPELINE_WORKSPACE
-SETUP_DATE=$(date)
-SETUP_USER=$USER
-SETUP_MODE=local-orchestrator
-EOF
-    chmod +x "$SCRIPTS_DIR/.env"
-    
     echo ""
     echo "Next steps:"
-    echo "  1. Review the setup on remote USS: $PIPELINE_WORKSPACE"
+    echo "  1. Review the setup on remote USS: $BANK_OF_Z_WORK_DIR"
     echo "  2. Check the Bank of Z installation"
     echo "  3. Connect to CICS using x3270:"
     echo "     - Enter 'logon applid(CICSBOZ)'"
