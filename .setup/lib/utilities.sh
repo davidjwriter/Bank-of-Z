@@ -303,7 +303,7 @@ return 8
 #
 # Behavior:
 #   - Verifies that CONFIG_FILE exists
-#   - Loads PIPELINE_WORKSPACE from:
+#   - Loads BANK_OF_Z_WORK_DIR from:
 #       1. Function argument if provided
 #       2. YAML config otherwise
 #
@@ -325,17 +325,15 @@ load_config() {
         exit 1
     fi
 
-    # Use explicit workspace if provided
-    if [[ -n "$1" ]]; then
-        PIPELINE_WORKSPACE="$1"
-    else
+    # Use provided workspace if available
+    if [ ! -f "$BANK_OF_Z_WORK_DIR" ]; then
         # Otherwise read from YAML configuration
-        PIPELINE_WORKSPACE=$(get_section_value 'sandbox' 'path')
+        export BANK_OF_Z_WORK_DIR=$(get_section_value 'sandbox' 'path')
     fi
 
     print_success "Configuration loaded successfully"
 
-    echo "  Workspace: $PIPELINE_WORKSPACE"
+    echo "  Workspace: $BANK_OF_Z_WORK_DIR"
 }
 
 
@@ -353,7 +351,7 @@ load_config() {
 #    - Triggered when not running inside a Git repository.
 #    - Assumes execution is orchestrated externally
 #      (e.g. VSCode task, CI pipeline, remote runner).
-#    - Uses PIPELINE_WORKSPACE if provided, otherwise the
+#    - Uses BANK_OF_Z_WORK_DIR if provided, otherwise the
 #      current working directory.
 #
 # This function initializes:
@@ -365,25 +363,37 @@ load_config() {
 #   - vscode
 #   - unknown
 # ============================================================
-detect_execution_mode() {
-    # Check if running from within Bank-of-Z repository
+detect_bank_of_z_location() {
+    local IN_REPO=false
+    # Detect if we're already in the Bank-of-Z repository
+    print_stage "Detecting Bank of Z location..."
+    
+    # Check if current directory is a git repo and if it's Bank-of-Z
     if git rev-parse --git-dir > /dev/null 2>&1; then
         local repo_name=$(basename "$(git rev-parse --show-toplevel)")
-        if [[ "$repo_name" == "Bank-of-Z" ]]; then
+        if [[ "$repo_name" =~ ^Bank-of-Z ]]; then
+            IN_REPO=true
             EXECUTION_MODE="grub"
-            WORKSPACE_DIR="$(git rev-parse --show-toplevel)"
-            print_info "Execution mode: GRUB (running from repository)"
-        else
-            EXECUTION_MODE="unknown"
-            print_warning "Running from git repository but not Bank-of-Z"
+            BANK_DIR="$(git rev-parse --show-toplevel)"
+            print_info "Running from within Bank-of-Z repository"
+            print_info "Repository location: $BANK_DIR"
+            print_success "Using current repository (GRUB workflow detected)"
         fi
-    else
-        # Not in a git repo, assume VSCode workflow with cloned repo
-        EXECUTION_MODE="vscode"
-        # Workspace should be set by orchestrator or use current directory
-        WORKSPACE_DIR="${PIPELINE_WORKSPACE:-$(pwd)}"
-        print_info "Execution mode: VSCode (orchestrated)"
     fi
     
-    print_info "Workspace directory: $WORKSPACE_DIR"
+    # If not in repo, use the cloned version in workspace
+    if [ "$IN_REPO" = false ]; then
+        BANK_DIR="$BANK_OF_Z_WORK_DIR/Bank-of-Z"
+        print_info "Using cloned repository at: $BANK_DIR"
+        EXECUTION_MODE="vscode"
+        if [ ! -d "$BANK_DIR" ]; then
+            print_error "Bank-of-Z not found at: $BANK_DIR"
+            print_info "Expected location: $BANK_DIR"
+            print_info "This should have been cloned by the orchestrator script"
+            return 1
+        fi
+        print_success "Found Bank-of-Z at workspace location (VSCode workflow detected)"
+    fi
+    BANK_OF_Z_WORK_DIR=$(dirname $BANK_DIR)
+    return 0
 }
