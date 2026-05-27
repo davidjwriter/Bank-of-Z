@@ -94,15 +94,16 @@ stage_clone_bank_of_z() {
     fi
     
     # Clone Bank of Z repository
-    print_info "Cloning Bank of Z repository on remote (branch: $current_branch)..."
+    current_repo=$(git config --get remote.origin.url | sed -E 's#git@([^:]+):#https://\1/#')
+    print_info "Cloning $current_repo on remote (branch: $current_branch)..."
     print_info "This may take a few minutes..."
     
-    if zowe rse-api-for-zowe-cli issue unix-shell "git clone https://github.com/IBM/Bank-of-Z.git -b $current_branch" --cwd "$BANK_OF_Z_WORK_DIR" 2>&1 | tee /tmp/clone.log; then
+    if zowe rse-api-for-zowe-cli issue unix-shell "git clone $current_repo -b $current_branch" --cwd "$BANK_OF_Z_WORK_DIR" 2>&1 | tee /tmp/clone.log; then
         print_success "Bank of Z cloned successfully on remote system"
     else
         # Try with main branch if current branch fails
         print_warning "Failed to clone branch '$current_branch', trying 'main' branch..."
-        if zowe rse-api-for-zowe-cli issue unix-shell "git clone https://github.com/IBM/Bank-of-Z.git" --cwd "$BANK_OF_Z_WORK_DIR" 2>&1 | tee /tmp/clone.log; then
+        if zowe rse-api-for-zowe-cli issue unix-shell "git clone $current_repo" --cwd "$BANK_OF_Z_WORK_DIR" 2>&1 | tee /tmp/clone.log; then
             print_success "Bank of Z cloned successfully (main branch)"
         else
             print_error "Failed to clone Bank of Z repository on remote system"
@@ -145,11 +146,12 @@ stage_execute_common_setup() {
     print_info "Running: bash $BANK_DIR/.setup/setup-common.sh $PIPELINE_WORKSPACE"
     
     set -o pipefail
-    if zowe rse-api-for-zowe-cli issue unix-shell "bash  $BANK_DIR/.setup/setup-common.sh $BANK_OF_Z_WORK_DIR" --cwd "$BANK_OF_Z_WORK_DIR" 2>&1 | tee /tmp/remote-setup.log; then
+    if zowe rse-api-for-zowe-cli issue unix-shell "export BANK_OF_Z_WORK_DIR=$BANK_OF_Z_WORK_DIR && bash  $BANK_OF_Z_WORK_DIR/Bank-of-Z/.setup/setup-common.sh all" --cwd "$BANK_OF_Z_WORK_DIR" 2>&1 | tee /tmp/remote-setup.log; then
         # Check for errors in the log
         if grep -i "error\|failed" /tmp/remote-setup.log | grep -v "Failed to change files and directory owner with chown" > /dev/null; then
-            print_warning "Setup completed but some warnings were detected"
+            print_error "Setup completed but some warnings were detected"
             print_info "Review /tmp/remote-setup.log for details"
+            exit 1
         else
             print_success "Remote setup completed successfully"
         fi
