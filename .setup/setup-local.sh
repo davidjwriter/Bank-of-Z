@@ -18,28 +18,6 @@ set -e  # Exit on error
 SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPTS_DIR/config/setenv.sh"
 
-# =========================
-# Load configuration
-# =========================
-load_config() {
-    print_info "Loading configuration from $CONFIG_FILE..."
-    
-    if [ ! -f "$CONFIG_FILE" ]; then
-        print_error "Configuration file not found: $CONFIG_FILE"
-        exit 1
-    fi
-    
-    # Parse configuration values
-    if [[ -n "$1" ]]; then
-        BANK_OF_Z_WORK_DIR="$1"
-    else
-        BANK_OF_Z_WORK_DIR=$(get_section_value 'sandbox' 'path')
-    fi
-    
-    print_success "Configuration loaded successfully"
-    echo "  Workspace: $BANK_OF_Z_WORK_DIR"
-}
-
 #########################################################
 # STAGE: Initialize Remote Workspace
 #########################################################
@@ -200,7 +178,7 @@ main() {
     check_zowe_cli
     
     # Load configuration
-    load_config "$1"
+    load_config
     
     # Execute stages
     stage_initialize_remote_workspace

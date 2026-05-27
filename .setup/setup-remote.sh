@@ -36,13 +36,28 @@ stage_execute_common_setup() {
     # Execute the common setup script on remote
     print_info "Running: bash .setup/setup-common.sh"
     
-    if ${SCRIPTS_DIR}/setup-common.sh $BANK_OF_Z_WORK_DIR; then
-        print_success "Remote setup completed successfully"
+    if ${SCRIPTS_DIR}/setup-common.sh validate-prereqs $BANK_OF_Z_WORK_DIR; then
+        print_success "Remote validate-prereqs completed successfully"
     else
-        print_error "Failed to execute setup on remote system"
+        print_error "Failed to execute validate-prereqs on remote system"
         print_info "Check /tmp/remote-setup.log for details"
         exit 1
     fi
+    if ${SCRIPTS_DIR}/setup-common.sh environment $BANK_OF_Z_WORK_DIR; then
+        print_success "Remote environment completed successfully"
+    else
+        print_error "Failed to execute environment on remote system"
+        print_info "Check /tmp/remote-setup.log for details"
+        exit 1
+    fi
+    if ${SCRIPTS_DIR}/setup-common.sh install-bank-of-z $BANK_OF_Z_WORK_DIR; then
+        print_success "Remote install-bank-of-z  completed successfully"
+    else
+        print_error "Failed to execute install-bank-of-z  on remote system"
+        print_info "Check /tmp/remote-setup.log for details"
+        exit 1
+    fi
+
 }
 
 #########################################################
@@ -59,7 +74,7 @@ main() {
     echo ""
     
     # Load configuration
-    load_config "$1"
+    load_config
     
     # Execute stages
     stage_execute_common_setup

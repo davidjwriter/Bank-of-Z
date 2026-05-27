@@ -334,14 +334,14 @@ print_usage() {
     echo "Usage: bash setup-common.sh <phase>"
     echo ""
     echo "Phases:"
-    echo "  validation      Validate prerequisites (zConfig, DBB, wazi-deploy)"
-    echo "  setup           Initialize workspace and infrastructure prerequisites"
-    echo "  build-baseline  Build and deploy the Bank of Z baseline"
+    echo "  validate-prereqs  Validate prerequisites (zConfig, DBB, wazi-deploy)"
+    echo "  environment       Initialize workspace and infrastructure prerequisites"
+    echo "  install-bank-of-z Build and deploy the Bank of Z baseline"
     echo ""
     echo "Examples:"
     echo "  bash setup-common.sh validation"
-    echo "  bash setup-common.sh setup"
-    echo "  bash setup-common.sh build-baseline"
+    echo "  bash setup-common.sh environment"
+    echo "  bash setup-common.sh install-bank-of-z"
 }
 
 #########################################################
