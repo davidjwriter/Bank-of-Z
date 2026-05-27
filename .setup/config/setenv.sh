@@ -9,7 +9,7 @@ LOCAL_SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if git rev-parse --show-toplevel >/dev/null 2>&1; then
     export REPO_NAME="$(basename "$(git rev-parse --show-toplevel)")"
 else
-    export REPO_NAME="Bank-Of-Z"
+    export REPO_NAME="Bank-of-Z"
 fi
 export CONFIG_FILE="$LOCAL_SCRIPTS_DIR/config.yaml"
 if command -v chtag >/dev/null 2>&1; then
