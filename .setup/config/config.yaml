@@ -70,13 +70,13 @@ zcodescan:
   # Java runtime for scanning tools
   java_home: ${java.java_home}
   # Working directory
-  cwd_dir: ${sandbox.path}/zDevOps/applications/CBSA/application
+  cwd_dir: ${sandbox.path}/${REPO_NAME}
   # Source directory to scan
-  src_dir: ${sandbox.path}/zDevOps/applications/CBSA/application/src/base
+  src_dir: ${sandbox.path}/${REPO_NAME}/src/base
   # Output directory for scan reports
-  output_dir: ${sandbox.path}/zDevOps/applications/CBSA/application/zcodescan
+  output_dir: ${sandbox.path}/zcodescan
   # Rules file to apply
-  rule_file: ${sandbox.path}/zDevOps/zcodescan/zcodescan-rules.yaml
+  rule_file: ${sandbox.path}/${REPO_NAME}/zcodescan/zcodescan-rules.yaml
   # Source encoding (z/OS default encoding)
   src_encoding: IBM-1047
   # ZCodeScan RESAPI connection info to check for IDZ EE license.
@@ -84,7 +84,6 @@ zcodescan:
   rseapi_user: ${RESAPI_USER} # env var
   rseapi_password: ${RESAPI_PASSWORD} # env var
   rseapi_verify: false
-  
 
 # Wazi Deploy (deployment automation)
 wazideploy:

@@ -202,6 +202,32 @@ stage_deploy_bank_of_z() {
 }
 
 #########################################################
+# STAGE: Static scan Bank of Z
+#########################################################
+stage_static_scan_bank_of_z() {
+    print_stage "STAGE: Static scan Bank of Z"
+    
+    # Verify installation script exists
+    if [ ! -f "$BANK_DIR/.setup/tasks/task-zcodescan-static-scan.sh" ]; then
+        print_error "Installation script not found: $BANK_DIR/.setup/tasks/task-zcodescan-static-scan.sh"
+        exit 1
+    fi
+    
+    # Run installation script
+    print_info "Running Bank of Z static scan script..."
+    print_info "Executing: bash $BANK_DIR/.setup/tasks/task-zcodescan-static-scan.sh"
+    cd "$BANK_DIR"
+    
+    set -o pipefail
+    if ${BANK_DIR}/.setup/tasks/task-zcodescan-static-scan.sh; then
+        print_success "Bank of Z application static scan completed successfully"
+    else
+        print_error "Failed to static scan Bank of Z"
+        exit 1
+    fi
+}
+
+#########################################################
 # STAGE: Setup Bank of Z databse
 #########################################################
 stage_setup_database() {
