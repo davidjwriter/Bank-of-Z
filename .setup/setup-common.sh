@@ -219,7 +219,7 @@ stage_static_scan_bank_of_z() {
     cd "$BANK_DIR"
     
     set -o pipefail
-    if ${BANK_DIR}/.setup/tasks/task-zcodescan-static-scan.sh; then
+    if source $HOME/.profile && ${BANK_DIR}/.setup/tasks/task-zcodescan-static-scan.sh; then
         print_success "Bank of Z application static scan completed successfully"
     else
         print_error "Failed to static scan Bank of Z"
