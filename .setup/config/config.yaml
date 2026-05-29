@@ -70,7 +70,7 @@ zcodescan:
   # Java runtime for scanning tools
   java_home: ${java.java_home}
   # Working directory
-  cwd_dir: ${sandbox.path}/${REPO_NAME}
+  cwd_dir: ${sandbox.path}
   # Source directory to scan
   src_dir: ${sandbox.path}/${REPO_NAME}/src/base
   # Output directory for scan reports

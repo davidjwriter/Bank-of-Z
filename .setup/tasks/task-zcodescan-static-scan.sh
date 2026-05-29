@@ -24,9 +24,9 @@ source "$SCRIPTS_DIR/../config/setenv.sh"
 # =========================
 export JAVA_HOME=${JAVA_HOME_REMOTE:-$(get_section_value 'zcodescan' 'java_home')}
 export PYENV_ACTIVATE_PATH=${PYENV_ACTIVATE_PATH:-$(get_section_value 'zcodescan' 'zcodescan_home')/bin/activate}
-export SCAN_CWD_FOLDER=${SCAN_CWD_FOLDER:-$(get_section_value 'zcodescan' 'cwd_folder')}
-export SCAN_SOURCE_FOLDER=${SCAN_SOURCE_FOLDER:-$(get_section_value 'zcodescan' 'src_folder')}
-export SCAN_OUTPUT_FILE=${SCAN_OUTPUT_FILE:-$(get_section_value 'zcodescan' 'output_folder')/zcs_export.yaml}
+export SCAN_CWD_FOLDER=${SCAN_CWD_FOLDER:-$(get_section_value 'zcodescan' 'cwd_dir')}
+export SCAN_SOURCE_FOLDER=${SCAN_SOURCE_FOLDER:-$(get_section_value 'zcodescan' 'src_dir')}
+export SCAN_OUTPUT_FOLDER=${SCAN_OUTPUT_FOLDER:-$(get_section_value 'zcodescan' 'output_dir')}
 export SCAN_RULE_FILE=${SCAN_RULE_FILE:-$(get_section_value 'zcodescan' 'rule_file')}
 export SCAN_ENCODING=${SCAN_ENCODING:-$(get_section_value 'zcodescan' 'src_encoding')}
 export ZCS_RESAPI_URL=${ZCS_RESAPI_URL:-$(get_section_value 'zcodescan' 'rseapi_url')}
@@ -42,8 +42,10 @@ export PATH="${JAVA_HOME}/bin:${REMOTE_EXTRA_PATH:-}:$PATH"
 TMP_LOG="/tmp/zcodescan_$$.log"
 : > "$TMP_LOG"
 
-LOG_DIR="$SCRIPTS_DIR/logs"
-LOG_TAR="$SCRIPTS_DIR/zcodescan-log.tar"
+
+SCAN_OUTPUT_FILE=${SCAN_OUTPUT_FOLDER}/output/zcs_export.yaml
+LOG_DIR="$SCAN_OUTPUT_FOLDER/logs"
+LOG_TAR="$SCAN_OUTPUT_FOLDER/zcodescan-log.tar"
 
 # =========================
 # Finalize: always publish log tar on exit

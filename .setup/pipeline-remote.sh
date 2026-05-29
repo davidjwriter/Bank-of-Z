@@ -23,7 +23,10 @@ stage_execute_pipeline() {
     
     print_info "Executing pipeline-common.sh on remote z/OS USS..."
     print_info "This will:"
-    print_info "  - Refresh git repository (pull latest)"
+    if [[ "$EXECUTION_MODE" != "grub" ]]; then
+        print_info "  - Refresh git repository (pull latest)"
+    fi
+    print_info "  - Run static scan"
     print_info "  - Run DBB build"
     print_info "  - Deploy build"
     echo ""
@@ -61,6 +64,12 @@ main() {
     print_info "This script runs on your LOCAL machine"
     print_info "It uses Zowe CLI to coordinate pipeline execution on remote z/OS USS"
     echo ""
+    
+    # Load configuration
+    load_config
+    
+    # Detect Execution Mode
+    detect_bank_of_z_location
     
     # Execute stages
     stage_execute_pipeline
