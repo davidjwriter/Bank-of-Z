@@ -111,7 +111,7 @@ source "${PYENV_ACTIVATE_PATH}"
 # =========================
 : > "$TMP_LOG"
 
-export SCAN_CONFIG_FILE="$SCRIPTS_DIR/config.yml"
+export SCAN_CONFIG_FILE="/tmp/config.yml"
 
 cat > "${SCAN_CONFIG_FILE}" << EOF
 license_server:
@@ -126,6 +126,10 @@ rm -f ./*.log
 mkdir -p "$LOG_DIR"
 
 print_info "${CYAN}[ZCODESCAN]${NC} Starting ZCodeScan analysis ..."
+
+if [ -f "$HOME/.profile" ]; then
+    source "$HOME/.profile"
+fi
 
 PYTHONUNBUFFERED=1 zcodescan \
   -sfl "$BUILD_LIST" \
@@ -146,6 +150,7 @@ do
     esac
 done
 
+rm -f $SCAN_CONFIG_FILE
 cp zcodescan.log "$LOG_DIR"
 
 # =========================
