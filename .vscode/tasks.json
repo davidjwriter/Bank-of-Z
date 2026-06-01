@@ -6,7 +6,7 @@
             "type": "shell",
             "command": "bash",
             "args": [
-                "${workspaceFolder}/.setup/setup-local.sh"
+                "./setup-local.sh"
             ],
             "options": {
                 "cwd": "${workspaceFolder}/.setup"
@@ -31,7 +31,7 @@
             "type": "shell",
             "command": "bash",
             "args": [
-                "${workspaceFolder}/.setup/pipeline-local.sh"
+                "./pipeline-local.sh"
             ],
             "options": {
                 "cwd": "${workspaceFolder}/.setup"
