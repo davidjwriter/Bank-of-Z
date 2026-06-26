@@ -45,21 +45,32 @@ lifecycles:
       - MetadataInit
       - FullAnalysis
       - Languages    # Defined in Languages.yaml
-      #- zOSConnect
+      - VanillaFrontend
+      - ServerXmlPackager
+      - zOSConnect
       - Package
       - Finish
+
+    cli:
+      usage: dbb build full [arguments] [options]
+      options:
+        - longOption: "debug"
+          hasArg: false
+          description: "Enables the debug options on load modules."
 
   # build only programs impacted by changes to the application
   - lifecycle: impact
 
-    # Optional argument to supply base line references for calculating change files
-    # See https://www.ibm.com/docs/en/dbb/3.0?topic=index-task-impactanalysis
     cli:
       usage: dbb build impact [arguments] [options]
       options:
         - longOption: "baselineRef"
           hasArg: true
           description: "Overrides the baseline reference to measure changes from."
+        - longOption: "debug"
+          hasArg: false
+          description: "Enables the debug options on load modules."
+
     
     # define the list of tasks to execute during the build lifecycle
     tasks:
@@ -68,7 +79,10 @@ lifecycles:
       - MetadataInit
       - ImpactAnalysis
       - Languages    # Defined in Languages.yaml
-      #- zOSConnect
+      - VanillaFrontend
+      - ServerXmlPackager
+      - zOSConnect
+      - Package
       - Finish
 
   - lifecycle: pipeline
@@ -81,6 +95,10 @@ lifecycles:
         - longOption: "build-id"
           hasArg: true
           description: "The build identifier for the package being created. ie: 20240415.7"
+        - longOption: "debug"
+          hasArg: false
+          description: "Enables the debug options on load modules."
+
     
     tasks:
       - Start
@@ -88,7 +106,9 @@ lifecycles:
       - MetadataInit
       - ImpactAnalysis
       - Languages    # Defined in Languages.yaml
-      #- zOSConnect
+      - VanillaFrontend
+      - ServerXmlPackager
+      - zOSConnect
       - Package
       - Finish
 
@@ -124,7 +144,7 @@ lifecycles:
         - longOption: "debug"
           hasArg: false
           description: "Enables the debug options on load modules."
-    
+
     # define the list of tasks to execute during the build lifecycle
     tasks:
       - Start
@@ -200,11 +220,25 @@ tasks:
             copyMode: LOAD
           - deployType: PSBLOAD
             copyMode: LOAD
+          - deployType: CONFIG
+            copyMode: TEXT
+          - deployType: ZOSCONNECT-CONFIG
+            copyMode: TEXT
+          - deployType: WAR
+            copyMode: BINARY
 
   # build finialization
   - task: Finish
 
   - task: zOSConnect
+
+    # Custom task for Vanilla JS frontend build
+  - task: VanillaFrontend
+    script: groovy/VanillaFrontend.groovy
+
+  # Custom task for server.xml packaging
+  - task: ServerXmlPackager
+    script: groovy/ServerXmlPackager.groovy
   
   # default empty Languages stage
   # to be replaced by content of Languges.yaml

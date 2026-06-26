@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = process.env.PORT || 3001;
+const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:9080';
 
 // MIME types for different file extensions
 const mimeTypes = {
@@ -31,6 +32,13 @@ const mimeTypes = {
 
 const server = http.createServer((req, res) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+
+    // Check if this is an API request (IMS, customers, accounts endpoints)
+    if (req.url.startsWith('/api/') || req.url.startsWith('/ims/') || req.url.startsWith('/customers') || req.url.startsWith('/accounts')) {
+        // Proxy API requests to backend
+        proxyApiRequest(req, res);
+        return;
+    }
 
     // Parse URL and strip query parameters
     const urlPath = req.url.split('?')[0];
@@ -63,9 +71,51 @@ const server = http.createServer((req, res) => {
     });
 });
 
+// Proxy API requests to backend
+function proxyApiRequest(req, res) {
+    // Strip /api prefix for local Docker z/OS Connect
+    const urlPath = req.url.startsWith('/api/') ? req.url.substring(4) : req.url;
+    const apiUrl = new URL(`${API_BASE_URL}${urlPath}`);
+    console.log(`Proxying API request to: ${apiUrl.href}`);
+
+    const options = {
+        hostname: apiUrl.hostname,
+        port: apiUrl.port || 80,
+        path: apiUrl.pathname + apiUrl.search,
+        method: req.method,
+        headers: {
+            'Content-Type': 'application/json',
+            'Host': apiUrl.host,
+            ...req.headers
+        }
+    };
+
+    // Remove host header from original request to avoid conflicts
+    delete options.headers.host;
+
+    const proxyReq = http.request(options, (proxyRes) => {
+        // Forward status code and headers
+        res.writeHead(proxyRes.statusCode, proxyRes.headers);
+
+        // Pipe response back to client
+        proxyRes.pipe(res);
+    });
+
+    proxyReq.on('error', (error) => {
+        console.error('Proxy request failed:', error);
+        console.error('Target URL:', apiUrl.href);
+        console.error('Options:', options);
+        res.writeHead(502, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Bad Gateway', message: error.message }));
+    });
+
+    // Pipe request body to backend
+    req.pipe(proxyReq);
+}
+
 server.listen(PORT, () => {
     console.log('='.repeat(60));
-    console.log('CICS Banking Sample Application - Vanilla JavaScript Frontend');
+    console.log('Bank of Z Sample Application - Vanilla JavaScript Frontend');
     console.log('='.repeat(60));
     console.log(`Server running at http://localhost:${PORT}/`);
     console.log(`Press Ctrl+C to stop the server`);

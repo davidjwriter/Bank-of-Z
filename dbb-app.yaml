@@ -15,10 +15,37 @@
 # ============================================================
 
 version: 1.0.0
+
 application:
-  name: bank-of-z-zos-native
+  name: BANKZ
 
   tasks:
+
+    - task: Start
+      variables:
+      # Configure the source directory for building
+      - name: sourceDirs
+        value:
+            - "Bank-of-Z/src/base"
+            - "Bank-of-Z/src/api/src/main/api"
+            - "Bank-of-Z/src/frontend"
+
+    - task: ScannerInit
+      variables:
+        - name: scanners
+          value:
+            - scanner: Dummy
+              extensions: yaml
+        - name: excludeFileList
+          value: [".*","**/.*","**.html","**.java","**.png","**.css","**.js","**.groovy","**.json","**.md","**.java","**/LoadData/**"]  
+
+      # Variable overrides for the FullAnalysis task
+    - task: FullAnalysis
+      variables:
+        - name: continueOnScanFailure
+          value: true
+        - name: excludeFileList
+          value: [".*","**/.*","**.html","**.java","**.png","**.css","**.js","**.groovy","**.json","**.md","**.java","**/LoadData/**"]
 
     # ----------------------------------------------------------
     # ImpactAnalysis task
@@ -28,6 +55,13 @@ application:
     # ----------------------------------------------------------
     - task: ImpactAnalysis
       variables:
+        - name: continueOnScanFailure
+          value: true
+
+        - name: excludeFileList
+          value: [".*","**/.*","**.html","**.java","**.png","**.css","**.js","**.groovy","**.json","**.md","**.java","**/LoadData/**"]
+
+        
         # Uncomment to log every file scanned during analysis:
         #- name: printScannedItems
         #  value: true
@@ -176,7 +210,7 @@ application:
     - task: PLI
       # Glob pattern selecting PL/I source files to compile
       sources:
-        - "**/src/base/**/pli/*.pli"
+        - "**/src/base/**/*.pli"
 
       variables:
 
@@ -186,7 +220,9 @@ application:
 
         # Enable IMS-specific compiler and runtime options
         # (e.g. DL/I call support, IMS PSB/DBD handling)
+        # Enable IMS ONLY for programs under ims/pli/
         - name: isIMS
+          forFiles: "**/src/base/ims/pli/*.pli"
           value: true
 
         # ----- Link-edit instream for IBLOGIN (IMS PL/I program) -----
@@ -200,19 +236,86 @@ application:
               INCLUDE  SYSLIB(${MEMBER})
               INCLUDE RESLIB(DFSLI000)
               ENTRY CEESTART
-
+              
+        # ----- Link-edit instream for batch DB2 PL/I programs -----
+        # Batch programs use CEESTART but don't need DFSLI000
+        # DB2 connection handled via DSN RUN in JCL
+        - name: linkEditStream
+          forFiles: "**/src/base/batch/pli/*.pli"
+          value: |2
+              INCLUDE  SYSLIB(${MEMBER})
+              ENTRY CEESTART
+              NAME ${MEMBER}(R)
+              
         # ----- Deployment type -----
         # Controls which target library the load module is deployed to:
         #   IMSLOAD  - IMS program library (for all programs under ims/pli/)
         - name: deployType
+          forFiles: "**/src/base/ims/pli/*.pli"
           value: IMSLOAD
+          
+        # ----- Deployment type for batch programs -----
+        - name: deployType
+          forFiles: "**/src/base/batch/pli/*.pli"
+          value: LOAD
+          
+    - task: MetadataInit
+      variables:
+       - name: fileLocation # Location of file system metadata store.
+         value: /usr/local/sandboxes  # Default is the $HOME environment variable.
 
+    # ----------------------------------------------------------
+    # Custom Groovy tasks for frontend and configuration packaging
+    # Defined in: .setup/build/groovy/CustomTasks.yaml
+    # ----------------------------------------------------------
+    # VanillaFrontend task
+    # Packages the vanilla JavaScript/HTML frontend into a WAR file
+    # for deployment to z/OS Connect Liberty server.
+    # ----------------------------------------------------------
+    - task: VanillaFrontend
+      variables:
+        - name: shellEnvironment
+          value: "/usr/lpp/IBM/foz/v1r1/bash/bash/bin/bash"
+        - name: javaHome
+          value: "/usr/local/sandboxes/tools/J17.0_64"
+        - name: vanillaFrontendPath
+          value: "src/frontend"
+        - name: vanillaWarName
+          value: "bank-frontend-vanilla.war"
 
+    # ----------------------------------------------------------
+    # ServerXmlPackager task
+    # Packages Liberty server.xml and cics.xml configuration files
+    # for z/OS Connect deployment. These files contain placeholders
+    # that will be replaced with environment-specific values during
+    # deployment.
+    # ----------------------------------------------------------
+    
+    - task: ServerXmlPackager
+      variables:
+        - name: shellEnvironment
+          value: "/usr/lpp/IBM/foz/v1r1/bash/bash/bin/bash"
+        - name: serverXmlPath
+          value: "src/api/src/main/liberty/config/server.xml"
+        - name: cicsXmlPath
+          value: "src/api/src/main/liberty/config/cics.xml"
+    
+    - task: zOSConnect
+      variables:
+        - name: configSources
+          value:
+            - "**/src/main/api/openapi.yaml"
+        - name: gradleDebug
+          value: true
+        - name: gradlePath
+          value: "/usr/local/sandboxes/tools/gradle-9.5.1/bin/gradle"
+        - name: shellEnvironment
+          value: "/usr/lpp/IBM/foz/v1r1/bash/bash/bin/bash"
     # ----------------------------------------------------------
     # Assembler task
     # Handles IMS control block sources: PSBs (Program Specification
     # Blocks) and DBDs (Database Descriptors). These are not compiled
-    # like application programs — they are assembled by the IMS ACBGEN
+    # like application programs. They are assembled by the IMS ACBGEN
     # utility and stored in dedicated load libraries.
     # ----------------------------------------------------------
     - task: Assembler
@@ -234,8 +337,8 @@ application:
         #
         #   DBDLOAD - IMS DBD library; a DBD describes the physical
         #             structure of an IMS database: segment types,
-        #             field layouts, and access methods (HDAM, HIDAM…).
-        #             DBDs are the counterpart to PSBs — PSBs reference
+        #             field layouts, and access methods (HDAM, HIDAM).
+        #             DBDs are the counterpart to PSBs - PSBs reference
         #             DBDs to express what a program can see.
         - name: deployType
           forFiles: "**/src/base/ims/PSB/*.asm"
@@ -244,3 +347,20 @@ application:
         - name: deployType
           forFiles: "**/src/base/ims/DBD/*.asm"
           value: DBDLOAD
+
+        # Assembler parms
+        - name: assemblerParms
+          value: OBJECT,NODECK
+          append:
+          - condition: 
+              exists: errPrefix
+            value: ADATA,EX(ADX(ELAXHASM))
+          - condition: 
+              exists: debug
+              notExits: errPrefix
+              eval: ${debug}
+            value: ADATA
+
+        # Link edit parms
+        - name: linkEditParms
+          value: XREF,LIST

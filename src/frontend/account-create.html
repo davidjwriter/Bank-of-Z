@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#000000">
-    <title>Create Account - CBSA</title>
+    <title>Create Account - Bank of Z</title>
 
     <!-- Carbon Design System Styles -->
     <link rel="stylesheet" href="css/carbon-styles.min.css">
@@ -167,14 +167,14 @@
                 );
             } catch (error) {
                 hideLoadingModal();
-
                 console.log(error);
-
-
-                if (error.message.includes('Failed to fetch')) {
+                
+                if (error.message.includes('not supported') || error.message.includes('not implemented')) {
+                    showErrorModal('Feature Not Implemented', error.message);
+                } else if (error.message.includes('Failed to fetch')) {
                     showErrorModal('Network Error', 'Failed to connect to the server. Please check your connection.');
                 } else {
-                    showErrorModal('Error', 'Failed to create account. Please check the customer number exists.');
+                    showErrorModal('Error', error.message || 'Failed to create account. Please check the customer number exists.');
                 }
             }
         }

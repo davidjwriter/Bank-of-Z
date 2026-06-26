@@ -7,16 +7,10 @@ info:
   version: 1.0.0
   contact:
     name: Bank of Z API Support
-    email: api-support@bankofz.com
+    email: api-support@bankofz.example.com
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
-
-servers:
-  - url: https://api.bankofz.com/v1
-    description: Production server
-  - url: https://sandbox.bankofz.com/v1
-    description: Sandbox server for testing
 
 tags:
   - name: Customers
@@ -34,6 +28,167 @@ security:
       - customers
 
 paths:
+  /ims/customers/{customerId}:
+    get:
+      tags:
+        - Customers
+      summary: Get customer information
+      description: Retrieve detailed information about a specific customer
+      operationId: getIMSCustomer
+      parameters:
+        - name: customerId
+          in: path
+          required: true
+          description: Unique identifier for the customer
+          schema:
+            type: string
+            example: "CUST123456"
+      responses:
+        '200':
+          description: Customer information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /ims/customers/{customerId}/accounts:
+    get:
+      tags:
+        - Accounts
+      summary: Get customer accounts
+      description: Retrieve all accounts associated with a customer
+      operationId: getIMSCustomerAccounts
+      parameters:
+        - name: customerId
+          in: path
+          required: true
+          description: Unique identifier for the customer
+          schema:
+            type: string
+            example: "CUST123456"
+      responses:
+        '200':
+          description: Accounts retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /ims/accounts/{accountId}:
+    get:
+      tags:
+        - Accounts
+      summary: Get account details
+      description: Retrieve detailed information about a specific account
+      operationId: getIMSAccount
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: Unique identifier for the account
+          schema:
+            type: string
+            example: "ACC987654321" #pragma: allowlist secret
+      responses:
+        '200':
+          description: Account details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /ims/accounts/{accountId}/balances:
+    get:
+      tags:
+        - Balances
+      summary: Get account balances
+      description: Retrieve current balance information for a specific account
+      operationId: getIMSAccountBalances
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: Unique identifier for the account
+          schema:
+            type: string
+            example: "ACC987654321" #pragma: allowlist secret
+      responses:
+        '200':
+          description: Balance information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Balance'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /customers:
+    post:
+      tags:
+        - Customers
+      summary: Create a new customer
+      description: Create a new customer record via the CICS CRECUST program
+      operationId: createCustomer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCustomerRequest'
+      responses:
+        '201':
+          description: Customer created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedCustomer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /customers/{customerId}:
     get:
       tags:
@@ -66,6 +221,44 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalServerError'
+    put:
+      tags:
+        - Customers
+      summary: Update customer information
+      description: Update detailed information for a specific customer
+      operationId: updateCustomer
+      parameters:
+        - name: customerId
+          in: path
+          required: true
+          description: Unique identifier for the customer
+          schema:
+            type: string
+            example: "0000010000000001"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerUpdate'
+      responses:
+        '200':
+          description: Customer updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
 
   /customers/{customerId}/accounts:
     get:
@@ -148,7 +341,7 @@ paths:
           description: Unique identifier for the account
           schema:
             type: string
-            example: "ACC987654321"
+            example: "ACC987654321" #pragma: allowlist secret
       responses:
         '200':
           description: Account details retrieved successfully
@@ -181,14 +374,53 @@ paths:
           description: Unique identifier for the account
           schema:
             type: string
-            example: "ACC987654321"
+            example: "ACC987654321" #pragma: allowlist secret
       responses:
         '200':
           description: Balance information retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BalanceList'
+                $ref: '#/components/schemas/Balance'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /accounts/{accountId}/deposit:
+    post:
+      tags:
+        - Accounts
+      summary: Deposit funds to account
+      description: Deposit funds into a specific account
+      operationId: depositToAccount
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: Unique identifier for the account
+          schema:
+            type: string
+            example: "ACC987654321" #pragma: allowlist secret
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepositRequest'
+      responses:
+        '201':
+          description: Deposit successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepositResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -214,7 +446,7 @@ paths:
           description: Unique identifier for the account
           schema:
             type: string
-            example: "ACC987654321"
+            example: "ACC987654321" #pragma: allowlist secret
         - name: fromDate
           in: query
           description: Start date for transaction history (ISO 8601 format)
@@ -276,7 +508,7 @@ paths:
           description: Unique identifier for the account
           schema:
             type: string
-            example: "ACC987654321"
+            example: "ACC987654321" #pragma: allowlist secret
         - name: transactionId
           in: path
           required: true
@@ -309,21 +541,76 @@ components:
       description: OAuth2 authentication for secure API access
       flows:
         authorizationCode:
-          authorizationUrl: https://auth.bankofz.com/oauth/authorize
-          tokenUrl: https://auth.bankofz.com/oauth/token
+          authorizationUrl: https://auth.bankofz.example.com/oauth/authorize
+          tokenUrl: https://auth.bankofz.example.com/oauth/token
           scopes:
             accounts: Access to account information
             customers: Access to customer information
             transactions: Access to transaction history
 
   schemas:
+    CreateCustomerRequest:
+      type: object
+      required:
+        - firstName
+        - lastName
+      properties:
+        title:
+          type: string
+          description: Customer title (must be one of the valid values accepted by CRECUST)
+          enum: [Professor, Mr, Mrs, Miss, Ms, Dr, Drs, Lord, Sir, Lady]
+          example: "Mr"
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: Customer first name
+          example: "John"
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: Customer last name
+          example: "Smith"
+        dateOfBirth:
+          type: string
+          format: date
+          description: Customer date of birth (YYYY-MM-DD)
+          example: "1985-06-15"
+        phoneNumber:
+          type: string
+          maxLength: 20
+          description: Customer phone number
+          example: "+44 20 7946 0958"
+        address:
+          $ref: '#/components/schemas/Address'
+        customerStatus:
+          type: string
+          maxLength: 10
+          description: Customer status
+          example: "ACTIVE"
+
+    CreatedCustomer:
+      type: object
+      required:
+        - customerId
+        - sortCode
+      properties:
+        customerId:
+          type: string
+          description: The newly assigned customer ID
+          example: "0000000042"
+        sortCode:
+          type: string
+          description: The bank sort code for this customer
+          example: "987654"
+
     Customer:
       type: object
       required:
         - customerId
         - firstName
         - lastName
-        - email
       properties:
         customerId:
           type: string
@@ -346,11 +633,6 @@ components:
           format: date
           description: Customer date of birth
           example: "1985-06-15"
-        email:
-          type: string
-          format: email
-          description: Customer email address
-          example: "john.smith@example.com"
         phoneNumber:
           type: string
           description: Customer phone number
@@ -386,6 +668,63 @@ components:
         country:
           type: string
           example: "United Kingdom"
+    CustomerUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Customer title
+          example: "Mr"
+          enum: [Professor, Mr, Mrs, Miss, Ms, Dr, Drs, Lord, Sir, Lady]
+        firstName:
+          type: string
+          description: Customer first name
+          example: "John"
+          maxLength: 50
+        lastName:
+          type: string
+          description: Customer last name
+          example: "Smith"
+          maxLength: 50
+        dateOfBirth:
+          type: string
+          format: date
+          description: Customer date of birth
+          example: "1985-06-15"
+        phoneNumber:
+          type: string
+          description: Customer phone number
+          example: "+44 20 7946 0958"
+          maxLength: 20
+        address:
+          type: object
+          properties:
+            addressLine1:
+              type: string
+              example: "123 High Street"
+              maxLength: 50
+            addressLine2:
+              type: string
+              example: "Apartment 4B"
+              maxLength: 50
+            city:
+              type: string
+              example: "London"
+              maxLength: 50
+            postalCode:
+              type: string
+              example: "SW1A 1AA"
+              maxLength: 10
+            country:
+              type: string
+              example: "United Kingdom"
+              maxLength: 50
+        customerStatus:
+          type: string
+          enum: [ACTIVE, INACTIVE, SUSPENDED]
+          description: Current status of the customer
+          example: "ACTIVE"
+
 
     AccountList:
       type: object
@@ -412,7 +751,7 @@ components:
         accountId:
           type: string
           description: Unique identifier for the account
-          example: "ACC987654321"
+          example: "ACC987654321" #pragma: allowlist secret
         accountType:
           type: string
           enum: [CURRENT, SAVINGS, CREDIT_CARD, LOAN]
@@ -540,7 +879,7 @@ components:
         accountId:
           type: string
           description: Account identifier
-          example: "ACC987654321"
+          example: "ACC987654321" #pragma: allowlist secret
         amount:
           type: number
           format: double
@@ -590,6 +929,55 @@ components:
           type: string
           description: Merchant category code
           example: "5411"
+
+    DepositRequest:
+      type: object
+      required:
+        - amount
+        - sortCode
+      properties:
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+          description: Deposit amount (must be positive)
+          example: 100.00
+        sortCode:
+          type: string
+          pattern: '^\d{6}$'
+          description: 6-digit bank sort code
+          example: "987654"
+        description:
+          type: string
+          maxLength: 40
+          description: Optional description of the deposit
+          example: "Cash deposit"
+
+    DepositResponse:
+      type: object
+      required:
+        - accountId
+        - availableBalance
+        - actualBalance
+      properties:
+        accountId:
+          type: string
+          description: Account identifier
+          example: "ACC987654321" #pragma: allowlist secret
+        availableBalance:
+          type: number
+          format: double
+          description: Available balance after deposit
+          example: 1334.56
+        actualBalance:
+          type: number
+          format: double
+          description: Actual balance after deposit
+          example: 1334.56
+        transactionReference:
+          type: string
+          description: Transaction reference number
+          example: "DEP20260619001"
 
     Error:
       type: object
