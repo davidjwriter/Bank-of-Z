@@ -27,6 +27,13 @@ if command -v chtag >/dev/null 2>&1; then
 fi
 set -e
 
+# python3 is needed by get_section_value (config.py) but $PYTHON_HOME/bin
+# is not added to PATH until after the .env generation block below.
+# Bootstrap it now by reading python_home directly from config.yaml with awk.
+_PY_HOME=$(awk '/^python:/{f=1} f && /python_home:/{gsub(/.*python_home:[[:space:]]*"|"[[:space:]]*$|[[:space:]]/, ""); print; exit}' "$LOCAL_SCRIPTS_DIR/config.yaml")
+[ -n "$_PY_HOME" ] && export PATH="${_PY_HOME}/bin:$PATH"
+unset _PY_HOME
+
 export LIB_DIR="$LOCAL_SCRIPTS_DIR/../lib"
 source "$LIB_DIR/utilities.sh"
 source "$LIB_DIR/colors.sh"
