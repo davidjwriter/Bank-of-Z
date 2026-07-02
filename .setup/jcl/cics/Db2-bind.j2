@@ -1,0 +1,130 @@
+{{ db2.jobcard }}
+//*********************************************************************
+//*                                                                   *
+//* BIND DB2 PACKAGES AND PLAN - BANKZ CICS                           *
+//*                                                                   *
+//*********************************************************************
+//BIND    EXEC PGM=IKJEFT01
+//STEPLIB  DD  DISP=SHR,DSN={{ db2.sdsnexit }}
+//         DD  DISP=SHR,DSN={{ db2.sdsnload }}
+//DBRMLIB  DD DISP=SHR,DSN={{ app.base_name }}.{{ app.zos_version }}.DBRM(BANKDATA)
+//     DD DISP=SHR,DSN={{ app.base_name }}.{{ app.zos_version }}.DBRM(CREACC)
+//     DD DISP=SHR,DSN={{ app.base_name }}.{{ app.zos_version }}.DBRM(CRECUST)
+//     DD DISP=SHR,DSN={{ app.base_name }}.{{ app.zos_version }}.DBRM(DBCRFUN)
+//     DD DISP=SHR,DSN={{ app.base_name }}.{{ app.zos_version }}.DBRM(DELACC)
+//     DD DISP=SHR,DSN={{ app.base_name }}.{{ app.zos_version }}.DBRM(DELCUS)
+//     DD DISP=SHR,DSN={{ app.base_name }}.{{ app.zos_version }}.DBRM(INQACC)
+//     DD DISP=SHR,DSN={{ app.base_name }}.{{ app.zos_version }}.DBRM(INQACCCU)
+//     DD DISP=SHR,DSN={{ app.base_name }}.{{ app.zos_version }}.DBRM(INQCUST)
+//     DD DISP=SHR,DSN={{ app.base_name }}.{{ app.zos_version }}.DBRM(UPDACC)
+//     DD DISP=SHR,DSN={{ app.base_name }}.{{ app.zos_version }}.DBRM(UPDCUST)
+//     DD DISP=SHR,DSN={{ app.base_name }}.{{ app.zos_version }}.DBRM(XFRFUN)
+//     DD DISP=SHR,DSN={{ app.base_name }}.{{ app.zos_version }}.DBRM(BNKSTMT)
+//SYSPRINT DD  SYSOUT=*
+//SYSTSPRT DD  SYSOUT=*
+//SYSUDUMP DD  SYSOUT=*
+//SYSTSIN DD *
+ DSN SYSTEM({{ db2.ssid }})
+
+ BIND PACKAGE(BANKZPACK) OWNER({{ db2.sqlid }}) -
+ QUALIFIER({{ app.base_name }}) -
+ MEMBER(BANKDATA) -
+ ACTION(REPLACE)
+
+ BIND PACKAGE(BANKZPACK) OWNER({{ db2.sqlid }}) -
+ QUALIFIER({{ app.base_name }}) -
+ MEMBER(CREACC) -
+ ACTION(REPLACE)
+
+ BIND PACKAGE(BANKZPACK) OWNER({{ db2.sqlid }}) -
+ QUALIFIER({{ app.base_name }}) -
+ MEMBER(CRECUST) -
+ ACTION(REPLACE)
+
+ BIND PACKAGE(BANKZPACK) OWNER({{ db2.sqlid }}) -
+ QUALIFIER({{ app.base_name }}) -
+ MEMBER(DBCRFUN) -
+ ACTION(REPLACE)
+
+ BIND PACKAGE(BANKZPACK) OWNER({{ db2.sqlid }}) -
+ QUALIFIER({{ app.base_name }}) -
+ MEMBER(DELACC) -
+ ACTION(REPLACE)
+
+ BIND PACKAGE(BANKZPACK) OWNER({{ db2.sqlid }}) -
+ QUALIFIER({{ app.base_name }}) -
+ MEMBER(DELCUS) -
+ ACTION(REPLACE)
+
+ BIND PACKAGE(BANKZPACK) OWNER({{ db2.sqlid }}) -
+ QUALIFIER({{ app.base_name }}) -
+ MEMBER(INQACC) -
+ ACTION(REPLACE)
+
+ BIND PACKAGE(BANKZPACK) OWNER({{ db2.sqlid }}) -
+ QUALIFIER({{ app.base_name }}) -
+ MEMBER(INQACCCU) -
+ ACTION(REPLACE)
+
+ BIND PACKAGE(BANKZPACK) OWNER({{ db2.sqlid }}) -
+ QUALIFIER({{ app.base_name }}) -
+ MEMBER(INQCUST) -
+ ACTION(REPLACE)
+
+ BIND PACKAGE(BANKZPACK) OWNER({{ db2.sqlid }}) -
+ QUALIFIER({{ app.base_name }}) -
+ MEMBER(UPDACC) -
+ ACTION(REPLACE)
+
+ BIND PACKAGE(BANKZPACK) OWNER({{ db2.sqlid }}) -
+ QUALIFIER({{ app.base_name }}) -
+ MEMBER(UPDCUST) -
+ ACTION(REPLACE)
+
+ BIND PACKAGE(BANKZPACK) OWNER({{ db2.sqlid }}) -
+ QUALIFIER({{ app.base_name }}) -
+ MEMBER(XFRFUN) -
+ ACTION(REPLACE)
+
+ BIND PACKAGE(BANKZPACK) OWNER({{ db2.sqlid }}) -
+ QUALIFIER({{ app.base_name }}) -
+ MEMBER(BNKSTMT) -
+ ACTION(REPLACE)
+
+ BIND PLAN(BANKZPLN) -
+ OWNER({{ db2.sqlid }}) -
+ ISOLATION(UR) -
+ PKLIST( -
+ NULLID.*,BANKZPACK.* )
+
+ END
+/*
+//GRANT EXEC PGM=IKJEFT01,REGION=0M
+//STEPLIB  DD  DISP=SHR,DSN={{ db2.sdsnexit }}
+//         DD  DISP=SHR,DSN={{ db2.sdsnload }}
+//SYSUDUMP DD SYSOUT=*
+//SYSPRINT DD SYSOUT=*
+//SYSTSPRT DD SYSOUT=*
+//SYSTSIN DD *
+ DSN SYSTEM({{ db2.ssid }})
+ RUN PROGRAM(DSNTEP2) PLAN(DSNTEP13) -
+ LIB('{{ db2.runlib }}')
+ END
+/*
+//SYSIN DD *
+ SET CURRENT SQLID = '{{ db2.sqlid }}';
+
+ GRANT EXECUTE ON PLAN BANKZPLN TO CICSUSER;
+
+ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
+     BANKZ.ACCOUNT TO CICSUSER;
+
+ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
+     BANKZ.PROCTRAN TO CICSUSER;
+
+ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
+     BANKZ.CONTROL TO CICSUSER;
+
+ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
+     BANKZ.CUSTOMER TO CICSUSER;
+/*

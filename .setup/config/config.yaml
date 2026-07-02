@@ -189,8 +189,8 @@ db2:
   port: 8102
   password: "${ZOS_USER_PASSWORD}"
   localtion: "DBD1LOC"
-  sdsnexit: "DB2V13.SDSNEXIT"
-  sdsnload: "DB2V13.SDSNLOAD"
-  sdsnlod2: "DB2V13.SDSNLOD2"
+  sdsnexit: "DSN131.SDSNEXIT"
+  sdsnload: "DSN.V13R1M0.SDSNLOAD"
+  sdsnlod2: "DSN.V13R1M0.SDSNLOD2"
   jobcard: "//{{jobname if jobname is defined else 'BOZJOB'}} JOB (ACCT),'IMS BANK',CLASS=A,MSGCLASS=H,NOTIFY=&SYSUID"
-  runlib: "DBD1.RUNLIB.LOAD"
+  runlib: "DSN131.RUNLIB.LOAD"

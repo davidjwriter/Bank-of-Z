@@ -1,0 +1,20 @@
+{{ db2.jobcard }}
+//*********************************************************************
+//*                                                                   *
+//* INSERT DB2 SEED DATA - BANKZ CICS                                 *
+//*                                                                   *
+//*********************************************************************
+//GRANT   EXEC PGM=IKJEFT01,DYNAMNBR=20
+//STEPLIB  DD  DISP=SHR,DSN={{ db2.sdsnexit }}
+//         DD  DISP=SHR,DSN={{ db2.sdsnload }}
+//SYSTSPRT DD  SYSOUT=*
+//SYSPRINT DD  SYSOUT=*
+//SYSUDUMP DD  SYSOUT=*
+//SYSTSIN    DD  *
+ DSN SYSTEM({{ db2.ssid }})
+ RUN PROGRAM(BANKDATA)  -
+ PLAN(BANKZPLN) -
+ PARM('1,10000,1,1000000000000000') -
+ LIB('{{ app.base_name }}.{{ app.zos_version }}.LOAD')
+ END
+/*

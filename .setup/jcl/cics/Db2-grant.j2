@@ -1,0 +1,34 @@
+{{ db2.jobcard }}
+//*********************************************************************
+//*                                                                   *
+//* GRANT DB2 PRIVILEGES - BANKZ CICS                                 *
+//*                                                                   *
+//*********************************************************************
+//GRANT    EXEC PGM=IKJEFT01,DYNAMNBR=20
+//STEPLIB  DD  DISP=SHR,DSN={{ db2.sdsnexit }}
+//         DD  DISP=SHR,DSN={{ db2.sdsnload }}
+//SYSTSPRT DD SYSOUT=*
+//SYSPRINT DD SYSOUT=*
+//SYSUDUMP DD SYSOUT=*
+//SYSTSIN  DD *
+  DSN SYSTEM({{ db2.ssid }})
+  RUN PROGRAM(DSNTEP2) PLAN(DSNTEP13) -
+      LIB('{{ db2.runlib }}') PARMS('/ALIGN(MID)')
+  END
+/*
+//SYSIN DD *
+
+  GRANT CREATEDBA TO {{ db2.sqlid }};
+  GRANT CREATESG TO {{ db2.sqlid }};
+
+  GRANT USE OF BUFFERPOOL BP0 TO {{ db2.sqlid }};
+  GRANT USE OF BUFFERPOOL BP1 TO {{ db2.sqlid }};
+
+  GRANT BINDADD TO {{ db2.sqlid }};
+
+  GRANT CREATEIN ON SCHEMA BANKZ TO {{ db2.sqlid }};
+
+  GRANT CREATE IN COLLECTION BANKZPACK TO {{ db2.sqlid }};
+  GRANT PACKADM ON COLLECTION BANKZPACK TO {{ db2.sqlid }};
+
+/*
