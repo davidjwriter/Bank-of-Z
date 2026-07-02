@@ -25,10 +25,19 @@
 #   - Only simple YAML structures are supported.
 get_section_value() {
     local script_dir
+    local python_bin
 
     script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-    python3 "${script_dir}/config.py" "$1" "$2"
+    # Prefer the zconfig venv python which has PyYAML and jinja2 installed.
+    # Fall back to bare python3 if the venv doesn't exist yet.
+    if [ -x "/usr/local/sandboxes/tools/zconfig/bin/python3" ]; then
+        python_bin="/usr/local/sandboxes/tools/zconfig/bin/python3"
+    else
+        python_bin="python3"
+    fi
+
+    "$python_bin" "${script_dir}/config.py" "$1" "$2"
 }
 
 
