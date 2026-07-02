@@ -119,7 +119,7 @@ print_info "${CYAN}[VALIDATE]${NC} ========================================="
 print_info "${CYAN}[VALIDATE]${NC} Checking ZOAU Installation"
 print_info "${CYAN}[VALIDATE]${NC} ========================================="
 
-ZOAU_MIN_VERSION="1.4.1.0"
+ZOAU_MIN_VERSION="1.4.0.0"
 
 if command -v zoauversion >/dev/null 2>&1; then
     ZOAU_OUTPUT=$(zoauversion 2>&1 || true)
