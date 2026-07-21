@@ -6,8 +6,8 @@ mappings:
     - code:
         required: true
         nullable: false
-        template: "ERROR_CODE"
+        template: "NOT_FOUND"
     - message:
         required: true
         nullable: false
-        template: "Error message"
+        template: "Customer not found"
