@@ -1,22 +1,19 @@
-{{ db2.jobcard }}
-//*********************************************************************
-//*                                                                   *
-//* GRANT DB2 PRIVILEGES - BANKZ CICS                                 *
-//*                                                                   *
-//*********************************************************************
+//{{ jobname if jobname is defined else 'DB2GRANT' }} JOB (ACCT),'DB2 GRANT',CLASS=A,MSGCLASS=H,
+//          NOTIFY=&SYSUID,USER={{ db2.sysadm }},PASSWORD={{ db2.sysadm_password }}
 //GRANT    EXEC PGM=IKJEFT01,DYNAMNBR=20
-//STEPLIB  DD  DISP=SHR,DSN={{ db2.sdsnexit }}
-//         DD  DISP=SHR,DSN={{ db2.sdsnload }}
+//STEPLIB  DD DISP=SHR,DSN={{ db2.db2_hlq }}.SDSNLOAD
 //SYSTSPRT DD SYSOUT=*
 //SYSPRINT DD SYSOUT=*
 //SYSUDUMP DD SYSOUT=*
 //SYSTSIN  DD *
   DSN SYSTEM({{ db2.ssid }})
   RUN PROGRAM(DSNTEP2) PLAN(DSNTEP13) -
-      LIB('{{ db2.runlib }}') PARMS('/ALIGN(MID)')
+      LIB('{{ db2.ssid }}.RUNLIB.LOAD') PARMS('/ALIGN(MID)')
   END
 /*
 //SYSIN DD *
+
+  SET CURRENT SQLID = '{{ db2.sysadm }}';
 
   GRANT CREATEDBA TO {{ db2.sqlid }};
   GRANT CREATESG TO {{ db2.sqlid }};
@@ -28,7 +25,7 @@
 
   GRANT CREATEIN ON SCHEMA BANKZ TO {{ db2.sqlid }};
 
-  GRANT CREATE IN COLLECTION BANKZPACK TO {{ db2.sqlid }};
-  GRANT PACKADM ON COLLECTION BANKZPACK TO {{ db2.sqlid }};
+  GRANT CREATE IN COLLECTION {{ db2.package }} TO {{ db2.sqlid }};
+  GRANT PACKADM ON COLLECTION {{ db2.package }} TO {{ db2.sqlid }};
 
 /*

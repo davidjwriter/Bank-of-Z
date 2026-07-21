@@ -2,6 +2,7 @@
 /.settings/
 /.bob/*.json
 /.setup/.env
+.env
 provisioning/
 /.pydevproject
 build.log
@@ -20,3 +21,11 @@ vsix-extensions/
 tools/
 imsbank_provisioning/
 .setup/jcl/ims/Db2-grant-sysadm.jcl
+docs/_site
+.env
+.gitignore
+scripts/update-frontend-file.sh
+scripts/update-frontend-file-zos.sh
+**/.taz-edt/
+**/datasets.yaml
+.gradle/

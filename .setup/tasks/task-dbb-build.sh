@@ -25,16 +25,15 @@ source "$SCRIPTS_DIR/../config/setenv.sh"
 # =========================
 # Environment
 # =========================
-export DBB_HOME=$(get_section_value 'dbb' 'dbb_home')
-export DBB_BUILD=$(get_section_value 'dbb' 'dbb_build')
-export DBB_CWD=$(get_section_value 'dbb' 'dbb_cwd')
-export DBB_APP_CONF=$(get_section_value 'dbb' 'dbb_app_conf')
-export DBB_LOG_FOLDER=$(get_section_value 'dbb' 'dbb_log_dir')
-export JAVA_HOME=$(get_section_value 'dbb' 'java_home')
-export API_BASE=$(get_section_value 'dbb' 'api_base')
+export DBB_CONFG_HOME=$(get_section_value 'dbb' 'dbb_home')
+if [ -f "$DBB_CONFG_HOME/bin/dbb" ]; then
+    export DBB_HOME=$DBB_CONFG_HOME
+fi
+
 export PATH="$JAVA_HOME/bin:$DBB_HOME/bin:$PATH"
 export GRADLE_USER_HOME="$SANDBOX_DIR/../.gradle"
 export GRADLE_OPTS="-Dfile.encoding=UTF-8"
+export GRADLE_DAEMON_BIND_ADDRESS=127.0.0.1
 export MAVEN_OPTS="-Dmaven.repo.local=$SANDBOX_DIR/../.m2/repository"
 
 # =========================
@@ -106,7 +105,8 @@ fi
 # =========================
 print_info "${CYAN}[DBB-BUILD]${NC} Starting DBB build in $DBB_CWD ..."
 cd "$DBB_CWD" || exit 1
-
+python "$SCRIPTS_DIR/../lib/render_template.py" --configFile $CONFIG_FILE \
+    --templateFile ".setup/build/datasets.yaml.j2"  --outputFile ".setup/build/datasets.yaml"
 set +e
 rm -rf ${DBB_LOG_FOLDER}
 mkdir -p ${DBB_LOG_FOLDER}
