@@ -168,7 +168,7 @@ run_job_and_wait() {
     LINE=$(jls "$JOBID" 2>/dev/null | grep "$JOBID" | tail -1 || true)
     [ -n "$LINE" ] && print_info "$LINE"
 
-    print_info "$LINE" | grep -Eq "OUTPUT|CC |ABEND|JCLERR|CANCELED|SEC ERROR" && break 
+    echo "$LINE" | grep -Eq "OUTPUT|CC |ABEND|JCLERR|CANCELED|SEC" && break
 
     sleep 3
   done
