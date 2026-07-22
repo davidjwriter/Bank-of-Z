@@ -75,6 +75,8 @@ global:
   db2_ssid: "DBD1"
   db2_runlib: "{{ global.db2_ssid }}.RUNLIB.LOAD"
   db2_sqlid: "{{ global.zos_current_user }}"
+  db2_sysadm: "IBMUSER"
+  db2_sysadm_password: "IBMUSER"
   db2_java_home: "/usr/lpp/db2d10"
   db2_grants:
   - "CICSUSER"
@@ -287,4 +289,6 @@ db2:
   sdsnload: "{{ db2.db2_hlq }}.SDSNLOAD"
   sdsnlod2: "{{ db2.db2_hlq }}.SDSNLOD2"
   jobcard: "//{{jobname if jobname is defined else app.short_name + 'JOB'}} JOB (ACCT),'IMS BANK',CLASS=A,MSGCLASS=H,NOTIFY=&SYSUID"
+  sysadm: "{{ global.db2_sysadm }}"
+  sysadm_password: "{{ global.db2_sysadm_password }}"
   db2_java_home: "{{ global.db2_java_home }}"
