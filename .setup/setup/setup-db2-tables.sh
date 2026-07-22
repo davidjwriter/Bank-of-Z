@@ -37,15 +37,9 @@ rm -f /tmp/Db2-* 2>/dev/null || true
 
 # CICS
 python "$SCRIPTS_DIR/../lib/render_template.py" --configFile $CONFIG_FILE \
-<<<<<<< HEAD
     --extraVar "jobname=DB2GRANT" --templateFile "$SCRIPTS_DIR/../jcl/cics/Db2-grant.j2" \
-    --outputFile "/tmp/Db2-grant-$$.jcl"
-run_job_and_wait "/tmp/Db2-grant-$$.jcl"
-
-=======
-    --extraVar "jobname=DB2BIND" --templateFile "$SCRIPTS_DIR/../jcl/cics/Db2-grant.j2"  --outputFile "/tmp/CICS-Db2-grant-$$.jcl"
+    --outputFile "/tmp/CICS-Db2-grant-$$.jcl"
 run_job_and_wait "/tmp/CICS-Db2-grant-$$.jcl" "8"
->>>>>>> jby-production-scripts
 python "$SCRIPTS_DIR/../lib/render_template.py" --configFile $CONFIG_FILE \
     --extraVar "jobname=DB2BIND" --templateFile "$SCRIPTS_DIR/../jcl/cics/Db2-drop.j2"  --outputFile "/tmp/CICS-Db2-drop-$$.jcl"
 run_job_and_wait "/tmp/CICS-Db2-drop-$$.jcl" "8"
