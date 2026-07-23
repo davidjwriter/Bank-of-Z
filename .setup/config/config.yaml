@@ -76,8 +76,8 @@ global:
   db2_ssid: "DBD1"
   db2_runlib: "DSN131.RUNLIB.LOAD"
   db2_sqlid: "{{ global.zos_current_user }}"
-  db2_sysadm: "TIVMVS"
-  db2_sysadm_password: "TIVMVS"
+  db2_sysadm: "SYSADM"
+  db2_sysadm_password: "SYSADM"
   db2_java_home: "/usr/lpp/db2d10"
   db2_grants:
   - "CICSUSER"
