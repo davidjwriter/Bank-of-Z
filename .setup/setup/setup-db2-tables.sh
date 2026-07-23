@@ -47,13 +47,15 @@ python "$SCRIPTS_DIR/../lib/render_template.py" --configFile $CONFIG_FILE \
     --extraVar "jobname=DB2BIND" --templateFile "$SCRIPTS_DIR/../jcl/cics/Db2-create.j2"  --outputFile "/tmp/CICS-Db2-create-$$.jcl"
 run_job_and_wait "/tmp/CICS-Db2-create-$$.jcl"
 
-# IMS
-python "$SCRIPTS_DIR/../lib/render_template.py" --configFile $CONFIG_FILE \
-    --extraVar "jobname=DB2BIND" --templateFile "$SCRIPTS_DIR/../jcl/ims/Db2-drop.j2"  --outputFile "/tmp/IMS-Db2-drop-$$.jcl"
-run_job_and_wait "/tmp/IMS-Db2-drop-$$.jcl" "8"
-python "$SCRIPTS_DIR/../lib/render_template.py" --configFile $CONFIG_FILE \
-    --extraVar "jobname=DB2BIND" --templateFile "$SCRIPTS_DIR/../jcl/ims/Db2-create.j2"  --outputFile "/tmp/IMS-Db2-create-$$.jcl"
-run_job_and_wait  "/tmp/IMS-Db2-create-$$.jcl"
+# IMS (only when IMS is not disabled)
+if [[ "${IMS_DISABLED:-false}" != "true" ]]; then
+    python "$SCRIPTS_DIR/../lib/render_template.py" --configFile $CONFIG_FILE \
+        --extraVar "jobname=DB2BIND" --templateFile "$SCRIPTS_DIR/../jcl/ims/Db2-drop.j2"  --outputFile "/tmp/IMS-Db2-drop-$$.jcl"
+    run_job_and_wait "/tmp/IMS-Db2-drop-$$.jcl" "8"
+    python "$SCRIPTS_DIR/../lib/render_template.py" --configFile $CONFIG_FILE \
+        --extraVar "jobname=DB2BIND" --templateFile "$SCRIPTS_DIR/../jcl/ims/Db2-create.j2"  --outputFile "/tmp/IMS-Db2-create-$$.jcl"
+    run_job_and_wait  "/tmp/IMS-Db2-create-$$.jcl"
+fi
 
 rm -f /tmp/IMS-Db2-*
 rm -f /tmp/CICS-Db2-*
