@@ -35,9 +35,9 @@ global:
 
 
   # z/OS System
-  zos_admin_user: "IBMUSER"
+  zos_admin_user: "TIVMVS"
   zos_current_user: "${ZOS_CURRENT_USER}"
-  sys_proclib: "SYS1.PROCLIB"
+  sys_proclib: "USER.PROCLIB"
   tcpip_hlq: "TCPIP"
   igzxjni2: "/usr/lpp/IBM/cobol/igyv6r5/lib/igzxjni2.x"
   igy_hlq: "IGY.V6R5M0"
@@ -58,16 +58,16 @@ global:
 
 
   # CICS
-  cics_hlq: "CICSTS63"
-  cics_uss_dir: "/usr/lpp/cicsts/cicsts63"
+  cics_hlq: "CICS63"
+  cics_uss_dir: "/usr/lpp/cicsts/cics63"
   cics_sec: "YES"
   
   # IMS
-  ims_disabled: "false"
-  ims_sys_hlq: "IMSV15"
+  ims_disabled: "true"
+  ims_sys_hlq: "DFS.V15RXM0"
   ims_java_home: "/usr/lpp/ims/imsjava"
-  ims_datastore: "IMS2"
-  ims_dfsplex: "PLEX2"
+  ims_datastore: "IMSO"
+  ims_dfsplex: "IMSOPLEX"
   
   # DB2
   db2_hlq: "DSN131"
