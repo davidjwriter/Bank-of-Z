@@ -64,7 +64,7 @@ global:
   
   # IMS
   ims_disabled: "true"
-  ims_sys_hlq: "DFS.V15RXM0"
+  ims_sys_hlq: "IMS1510"
   ims_java_home: "/usr/lpp/ims/imsjava"
   ims_datastore: "IMSO"
   ims_dfsplex: "IMSOPLEX"
