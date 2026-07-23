@@ -2,7 +2,7 @@
 //          MSGLEVEL=(1,1),REGION=4M
 //BIND    EXEC PGM=IKJEFT01
 //STEPLIB  DD  DISP=SHR,DSN={{ db2.db2_hlq }}.SDSNEXIT
-//         DD  DISP=SHR,DSN={{ db2.db2_hlq }}.SDSNLOAD
+//         DD  DISP=SHR,DSN={{ db2.sdsnload }}
 //DBRMLIB  DD DISP=SHR,DSN={{ app.app_hlq }}.{{ app.zos_version }}.DBRM(BANKDATA)
 //     DD DISP=SHR,DSN={{ app.app_hlq }}.{{ app.zos_version }}.DBRM(CREACC)
 //     DD DISP=SHR,DSN={{ app.app_hlq }}.{{ app.zos_version }}.DBRM(CRECUST)
