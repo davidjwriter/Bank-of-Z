@@ -59,7 +59,7 @@ global:
 
   # CICS
   cics_hlq: "CICS63"
-  cics_uss_dir: "/usr/lpp/cicsts/cics63"
+  cics_uss_dir: "/usr/lpp/cicsts/dfh630"
   cics_sec: "YES"
   
   # IMS

@@ -1,5 +1,5 @@
 //{{ jobname if jobname is defined else 'DB2GRANT' }} JOB (ACCT),'DB2 GRANT',CLASS=A,MSGCLASS=H,
-//          NOTIFY=&SYSUID
+//         NOTIFY=&SYSUID,USER={{ db2.sysadm }},PASSWORD={{ db2.sysadm_password }}
 //GRANT    EXEC PGM=IKJEFT01,REGION=0M
 //STEPLIB  DD  DISP=SHR,DSN={{ db2.db2_hlq }}.SDSNEXIT
 //         DD  DISP=SHR,DSN={{ db2.sdsnload }}
