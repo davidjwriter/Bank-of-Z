@@ -195,9 +195,10 @@ fi
 deactivate
 
 # =========================
-# Stage 4: Create DEBUG Items
+# Stage 4: Create DEBUG Items (optional — failures are non-fatal)
 # =========================
 print_stage "Stage 4: Create DEBUG Items"
+set +e
 export RIGHT='APPLID of CICS                       X'
 export LEFT='               APPLID=CICS'
 export SPACES=$((8-${#APP_SHORT_NAME} - 1))
@@ -209,14 +210,15 @@ python "$SCRIPTS_DIR/../lib/render_template.py" --configFile $CONFIG_FILE \
     --extraVar "cics_hlq=${APP_HLQ}.CICS${APP_SHORT_NAME}" --extraVar "applid_line=${LEFT}${MIDDLE}${RIGHT}" \
     --extraVar "tcpip_hlq=${DEBUG_TCPIP_HQL}" \
     --templateFile "$SCRIPTS_DIR/../jcl/cics/tcpip-create.j2"  --outputFile "/tmp/tcpip-create-$$.jcl"
-run_job_and_wait "/tmp/tcpip-create-$$.jcl"
+run_job_and_wait "/tmp/tcpip-create-$$.jcl" || print_warning "tcpip-create job failed (non-fatal — debug only)"
 
-drm "${APP_HLQ}.CICS${APP_SHORT_NAME}.TABLES.SOURCE" 2> /dev/null || true 
+drm "${APP_HLQ}.CICS${APP_SHORT_NAME}.TABLES.SOURCE" 2> /dev/null || true
 python "$SCRIPTS_DIR/../lib/render_template.py" --configFile $CONFIG_FILE \
     --extraVar "cics_hlq=${APP_HLQ}.CICS${APP_SHORT_NAME}" --templateFile "$SCRIPTS_DIR/../jcl/cics/plt-create.j2"  --outputFile "/tmp/plt-create-$$.jcl"
-run_job_and_wait "/tmp/plt-create-$$.jcl"
+run_job_and_wait "/tmp/plt-create-$$.jcl" || print_warning "plt-create job failed (non-fatal — debug only)"
 
-opercmd "S EQARMTD"
+opercmd "S EQARMTD" 2>/dev/null || true
+set -e
 
 # ======================================
 # Stage 5: Add CICS region to dtcn.ports
