@@ -6,7 +6,7 @@ vars:
   java_home: "/usr/lpp/java/java21/current_64"
   region_uss_dir: "/usr/local/sandboxes/bank-of-z"
   cmci_port: "27100"
-  cics_hlq: "DFH.V6R3M0.CICS"
+  cics_hlq: "DFH.V6R3M0"
   cics_uss_dir: "/usr/lpp/cicsts/dfh630"
   db2_hlq: "DSN131"
   eqaw_hlq: "EQAW.SEQAMOD"

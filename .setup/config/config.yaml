@@ -58,7 +58,7 @@ global:
 
 
   # CICS
-  cics_hlq: "DFH.V6R3M0.CICS"
+  cics_hlq: "DFH.V6R3M0"
   cics_uss_dir: "/usr/lpp/cicsts/dfh630"
   cics_sec: "YES"
   
