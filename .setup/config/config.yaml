@@ -30,7 +30,7 @@ global:
   gradle_home:  "{{ global.sandbox_root }}/tools/gradle-9.5.1"
   zcodescan_home: "/global/opt/pyenv/akf"
   wazideploy_home: "/usr/local/sandboxes/tools/gdp"
-  zosconnect_home: "/usr/lpp/IBM/zosconnect"
+  zosconnect_home: "/usr/lpp/IBM/zosconnect/v3r0"
   liberty_home: "/usr/lpp/liberty_zos/25.0.0.9"
 
 
