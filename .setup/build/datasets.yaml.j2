@@ -49,9 +49,9 @@ variables:
   - name: SIGYCOMP
     value: {{ dbb.igy_hlq }}.SIGYCOMP
 
-  # PL/I Compiler Data Sets - not installed on this LPAR, confirm HLQ with sysadmin before enabling
-  #- name: IBMZPLI
-  #  value: "{{ dbb.pli_hlq }}.SIBMZCMP"
+  # PL/I Compiler Data Sets
+  - name: IBMZPLI
+    value: "{{ dbb.pli_hlq }}.SIBMZCMP"
 
   # CICS Macro Library. Example: CICSTS.V3R2M0.CICS.SDFHMAC
   - name: SDFHMAC
@@ -93,9 +93,9 @@ variables:
   - name: SDSNEXIT
     value: "{{ db2.sdsnexit }}"
 
-  # IMS Macro Library - not found under IMS1510, confirm HLQ with sysadmin before enabling
-  #- name: SDFSMAC
-  #  value: "{{ ims.ims_sys_hlq }}.SDFSMAC"
+  # IMS Macro Library
+  - name: SDFSMAC
+    value: "{{ ims.ims_sys_hlq }}.SDFSMAC"
 
   # IMS RESLIB. Example: DFS.V11R1M0.SDFSRESL
   - name: RESLIB
