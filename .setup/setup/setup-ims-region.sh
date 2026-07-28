@@ -89,10 +89,13 @@ IMS_USER=$(printf '%s' "${IMS_USER}" | tr '[:lower:]' '[:upper:]')
 IMS_USER_LOWER=$(printf '%s' "${IMS_USER}" | tr '[:upper:]' '[:lower:]')
 print_info "Setting IMS user to ${IMS_USER} (USS: ${IMS_USER_LOWER})"
 
+# IMS_SYS_HLQ (IMS1510) is the runtime datasets HLQ.
+# The product library HLQ (DFS.V15RXM0) is needed for ADFSMAC/ADFSLOAD/ADFSSRC copies.
+IMS_PROD_HLQ=$(get_section_value 'global' 'ims_sdfsresl_hlq')
 zconfig apply -e ims_user="${IMS_USER}" -e ims_user_lower="${IMS_USER_LOWER}"\
               -e imsid="${IMS_DATASTORE}" -e ims_hlq="${IMS_APP_HLQ}" \
               -e ims_plex="${IMS_PLEX}" \
-              -e ims_sys_hlq="${IMS_SYS_HLQ}" -e db2_hlq="${DB2_HLQ}" \
+              -e ims_sys_hlq="${IMS_PROD_HLQ}" -e db2_hlq="${DB2_HLQ}" \
               -e java_home="${JAVA_HOME}" -e db2_java_home="${DB2_JAVA_HOME}" \
               -e ims_java_home="${IMS_JAVA_HOME}" \
               -e db2_ssid="${DB2_SSID}"  ims-region.yaml -v
