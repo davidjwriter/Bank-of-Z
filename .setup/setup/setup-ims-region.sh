@@ -123,10 +123,14 @@ IMS_PROCS="IMSOCTL IMSOSCI IMSOOM IMSORM IMSOHWS"
 ALL_COPIED=true
 for PROC in $IMS_PROCS; do
     print_info "Copying ${PROC} to ${IMS_SYS_PROCLIB}..."
-    if cp "//'${IMS_APP_HLQ}.${IMS_DATASTORE}.PROCLIB(${PROC})'" \
-          "//'${IMS_SYS_PROCLIB}(${PROC})'" 2>/dev/null; then
+    # Use a temp file: oget reads from MVS PDS member, oput writes to MVS PDS member
+    TMPF="/tmp/imsproc_${PROC}.jcl"
+    if oget "'${IMS_APP_HLQ}.${IMS_DATASTORE}.PROCLIB(${PROC})'" "$TMPF" 2>/dev/null \
+        && oput "$TMPF" "'${IMS_SYS_PROCLIB}(${PROC})'" 2>/dev/null; then
         print_success "Copied ${PROC}"
+        rm -f "$TMPF"
     else
+        rm -f "$TMPF"
         print_warning "Could not copy ${PROC} (may already exist or source missing)"
         ALL_COPIED=false
     fi
