@@ -134,6 +134,7 @@ CICS_SEC=${CICS_SEC:-$(get_section_value 'cics' 'cics_sec')}
 CICS_SYS_PROCLIB=$(get_section_value 'cics' 'sys_proclib')
 
 # IMS
+IMS_SYS_PROCLIB=$(get_section_value 'global' 'sys_proclib')
 IMS_DISABLED=${IMS_DISABLED:-$(get_section_value 'ims' 'disabled')}
 IMS_APP_HLQ=${IMS_APP_HLQ:-$(get_section_value 'ims' 'ims_hlq')}
 IMS_SYS_HLQ=${IMS_SYS_HLQ:-$(get_section_value 'ims' 'ims_sys_hlq')}
