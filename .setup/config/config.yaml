@@ -68,7 +68,7 @@ global:
   ims_sdfsresl_hlq: "DFS.V15RXM0"
   ims_java_home: "/usr/lpp/ims/imsjava"
   ims_datastore: "IMSO"
-  ims_dfsplex: "IMSOPLEX"
+  ims_dfsplex: "PLEX1"
   
   # DB2
   db2_hlq: "DSN131"
