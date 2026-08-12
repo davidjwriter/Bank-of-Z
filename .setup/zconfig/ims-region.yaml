@@ -1,14 +1,15 @@
 # IMS Region Configuration for Bank of Z
 # This configuration file is used by zconfig to provision an IMS region
 vars:
-  imsid: IMS2
-  ims_hlq: BANKZ.IMS2
-  ims_sys_hlq: IMSV15
-  ims_plex: PLEX2
-  db2_hlq: DB2V13
+  imsid: IMSO
+  ims_hlq: BANKZ.IMSO
+  ims_sys_hlq: DFS.V15RXM0
+  ims_plex: PLEX1
+  ims_ixvolser: TMVS5A       # volume serial — must match global.ims_ixvolser in config.yaml
+  db2_hlq: DSN131
   db2_ssid: DBD1
   java_home: "/usr/lpp/java/java21/current_64"
-  ims_java_home: "/usr/lpp/ims/imsjava"
+  ims_java_home: "/usr/lpp/ims/ims15/imsjava"
   db2_java_home: "/usr/lpp/db2d10"
 ims:
   ims_id: "{{ vars.imsid }}"
@@ -78,8 +79,8 @@ ims:
         dependent_region_scheduling_connection_id: "{{ vars.imsid }}"
         ims_identifier: "{{ vars.imsid }}"
         time_to_calculate_iovf_free_space_for_each_open_area: 7200
-        irlm_enablement: false
-        database_lock_manager_server_name: XRLM
+        irlm_enablement: true
+        database_lock_manager_server_name: IMSOIRLM
         resource_access_security_checking_option: A
         long_message_record_size: 0
         number_of_distinct_updates_to_dedb_ci_before_combining_into_single_logrecord_of_entire_ci: 10
@@ -188,7 +189,7 @@ ims:
             versions: 55
           acbmgmt: CATALOG
           access: UPDATE
-          ixvolser: "{{ vars.ims_sys_hlq }}"
+          ixvolser: "{{ vars.ims_ixvolser }}"
     - member_name: DFSFIXDC
       config:
         nuc: 33

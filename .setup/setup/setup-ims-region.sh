@@ -42,6 +42,25 @@ jcan P "${IMS_DATASTORE}MPP1" 2>/dev/null
 jcan P "${IMS_DATASTORE}MPP2" 2>/dev/null
 sleep 5
 set -e
+
+# =========================
+# Pre-start IRLM (required before IMS control region)
+# Sysadmin confirmed: S IMSOIRLM must be issued before S IMSOCR
+# =========================
+set +e
+if ! opercmd "D A,IMSOIRLM" 2>/dev/null | grep -q "IMSOIRLM"; then
+    print_info "Starting IRLM (IMSOIRLM)..."
+    opercmd "S IMSOIRLM" 2>/dev/null
+    sleep 10
+    if opercmd "D A,IMSOIRLM" 2>/dev/null | grep -q "IMSOIRLM"; then
+        print_success "IRLM (IMSOIRLM) is running ✅"
+    else
+        print_warning "IRLM (IMSOIRLM) could not be verified — continuing anyway"
+    fi
+else
+    print_info "IRLM (IMSOIRLM) already running"
+fi
+set -e
 # =========================
 # Activate zconfig environment
 # =========================
@@ -116,17 +135,29 @@ deactivate
 # zconfig writes procs to BANKZ.IMSO.PROCLIB but the z/OS S command only
 # searches the system PROCLIB concat (USER.PROCLIB, SYS1.PROCLIB etc.).
 # Copy every proc before issuing S commands so they are findable.
+# Note: sysadmin confirmed the CTL proc is IMSOCR (not IMSOCTL).
 # =========================
 print_stage "STAGE 1b: Copy IMS procs to ${IMS_SYS_PROCLIB} and start"
 
-IMS_PROCS="IMSOCTL IMSOSCI IMSOOM IMSORM IMSOHWS"
+# IMSOCR is the control region proc on this system (sysadmin-confirmed).
+# IMSOCTL is the name zconfig generates internally — we copy it out as IMSOCR.
+IMS_PROCS="IMSOCR IMSOSCI IMSOOM IMSORM IMSOHWS"
 ALL_COPIED=true
 for PROC in $IMS_PROCS; do
     print_info "Copying ${PROC} to ${IMS_SYS_PROCLIB}..."
-    # Use a temp file: oget reads from MVS PDS member, oput writes to MVS PDS member
     TMPF="/tmp/imsproc_${PROC}.jcl"
-    if oget "'${IMS_APP_HLQ}.${IMS_DATASTORE}.PROCLIB(${PROC})'" "$TMPF" 2>/dev/null \
-        && oput "$TMPF" "'${IMS_SYS_PROCLIB}(${PROC})'" 2>/dev/null; then
+    # The zconfig-generated CTL proc member is IMSOCTL; on this system the
+    # operator proc name is IMSOCR.  Try both names as source.
+    SRC_PROC="${PROC}"
+    if [ "${PROC}" = "IMSOCR" ]; then
+        # Try IMSOCR first (may already exist from a prior run), fall back to IMSOCTL
+        if ! oget "'${IMS_APP_HLQ}.${IMS_DATASTORE}.PROCLIB(IMSOCR)'" "$TMPF" 2>/dev/null; then
+            oget "'${IMS_APP_HLQ}.${IMS_DATASTORE}.PROCLIB(IMSOCTL)'" "$TMPF" 2>/dev/null || true
+        fi
+    else
+        oget "'${IMS_APP_HLQ}.${IMS_DATASTORE}.PROCLIB(${PROC})'" "$TMPF" 2>/dev/null || true
+    fi
+    if [ -s "$TMPF" ] && oput "$TMPF" "'${IMS_SYS_PROCLIB}(${PROC})'" 2>/dev/null; then
         print_success "Copied ${PROC}"
         rm -f "$TMPF"
     else
@@ -140,14 +171,20 @@ if [ "$ALL_COPIED" = "false" ]; then
     print_warning "Some procs could not be copied — will attempt to start anyway"
 fi
 
-# Now start any procs that zconfig failed to start (IMSOOM, IMSORM, IMSOHWS)
-# IMSOSCI was started successfully by zconfig; start the rest.
+# Now start any procs that zconfig failed to start.
+# Start order: IMSOSCI → IMSOOM → IMSORM → IMSOCR (CTL) → IMSOHWS
 set +e
-for PROC in IMSOOM IMSORM IMSOHWS; do
+for PROC in IMSOSCI IMSOOM IMSORM IMSOCR IMSOHWS; do
     if ! opercmd "D A,${PROC}" 2>/dev/null | grep -q "${PROC}"; then
         print_info "Starting ${PROC}..."
         opercmd "S ${PROC}" 2>/dev/null
-        sleep 5
+        # CTL region needs more time before HWS starts
+        if [ "${PROC}" = "IMSOCR" ]; then
+            print_info "Waiting 30s for IMS control region to initialise..."
+            sleep 30
+        else
+            sleep 5
+        fi
     else
         print_info "${PROC} already running"
     fi
@@ -169,8 +206,10 @@ print_info "Waiting for IMS regions to start..."
 sleep 15
 
 # Check if IMS Control Region is running
+# The CTL proc is IMSOCR on this system; also check the datastore address space name
 print_info "Checking IMS Control Region status..."
-if opercmd "D A,${IMS_DATASTORE}" 2>/dev/null | grep -q "${IMS_DATASTORE}"; then
+if opercmd "D A,IMSOCR" 2>/dev/null | grep -q "IMSOCR" || \
+   opercmd "D A,${IMS_DATASTORE}" 2>/dev/null | grep -q "${IMS_DATASTORE}"; then
     print_success "IMS Control Region (${IMS_DATASTORE}) is running"
 else
     print_warning "IMS Control Region (${IMS_DATASTORE}) status could not be verified"
