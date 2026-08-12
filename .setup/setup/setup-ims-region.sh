@@ -108,9 +108,9 @@ IMS_USER=$(printf '%s' "${IMS_USER}" | tr '[:lower:]' '[:upper:]')
 IMS_USER_LOWER=$(printf '%s' "${IMS_USER}" | tr '[:upper:]' '[:lower:]')
 print_info "Setting IMS user to ${IMS_USER} (USS: ${IMS_USER_LOWER})"
 
-# IMS_SYS_HLQ (IMS1510) is the runtime datasets HLQ.
-# The product library HLQ (DFS.V15RXM0) is needed for ADFSMAC/ADFSLOAD/ADFSSRC copies.
-IMS_PROD_HLQ=$(get_section_value 'global' 'ims_sdfsresl_hlq')
+# IMS_SYS_HLQ is the product HLQ (DFS.V15RXM0) — used for SDFSMAC, SDFSRESL etc.
+# IMS_IXVOLSER is the separate volume serial for dataset allocation (e.g. TMVS5A).
+IMS_IXVOLSER=$(get_section_value 'global' 'ims_ixvolser')
 
 # Run zconfig apply ignoring startup failures — zconfig writes procs to
 # BANKZ.IMSO.PROCLIB even when the S command fails (IEE122I) because z/OS
@@ -120,7 +120,8 @@ set +e
 zconfig apply -e ims_user="${IMS_USER}" -e ims_user_lower="${IMS_USER_LOWER}"\
               -e imsid="${IMS_DATASTORE}" -e ims_hlq="${IMS_APP_HLQ}" \
               -e ims_plex="${IMS_PLEX}" \
-              -e ims_sys_hlq="${IMS_PROD_HLQ}" -e db2_hlq="${DB2_HLQ}" \
+              -e ims_sys_hlq="${IMS_SYS_HLQ}" -e ims_ixvolser="${IMS_IXVOLSER}" \
+              -e db2_hlq="${DB2_HLQ}" \
               -e java_home="${JAVA_HOME}" -e db2_java_home="${DB2_JAVA_HOME}" \
               -e ims_java_home="${IMS_JAVA_HOME}" \
               -e db2_ssid="${DB2_SSID}"  ims-region.yaml -v
