@@ -93,15 +93,15 @@ variables:
   - name: SDSNEXIT
     value: "{{ db2.sdsnexit }}"
 
-  # IMS Macro Library (product install HLQ differs from IMS1510 runtime HLQ)
+  # IMS Macro Library
   - name: SDFSMAC
-    value: "{{ global.ims_sdfsresl_hlq }}.SDFSMAC"
+    value: "{{ global.ims_sys_hlq }}.SDFSMAC"
 
   # IMS RESLIB
   - name: RESLIB
-    value: "{{ global.ims_sdfsresl_hlq }}.SDFSRESL"
+    value: "{{ global.ims_sys_hlq }}.SDFSRESL"
   - name: SDFSRESL
-    value: "{{ global.ims_sdfsresl_hlq }}.SDFSRESL"
+    value: "{{ global.ims_sys_hlq }}.SDFSRESL"
 
   # User generated library for DB/DC and DC installations. Example: DFS.V11R1M0.REFERAL
   - name: REFERAL
