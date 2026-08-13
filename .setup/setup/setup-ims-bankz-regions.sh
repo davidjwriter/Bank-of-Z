@@ -97,7 +97,9 @@ cp "//'${IMS_APP_HLQ}.PROCLIB(DFSJVMAP)'" "//'${IMS_APP_HLQ}.IMSJAVA.JOBS(DFSJVM
 
 python "$SCRIPTS_DIR/../lib/render_template.py" --configFile $CONFIG_FILE \
     --extraVar "jobname=CHEKSPOC" --extraVar "member_exists=${MEMBER_EXISTS}"  --extraVar "region_num=3" --templateFile "$SCRIPTS_DIR/../jcl/ims/templates/jmp/VERIFYSPOC.j2"  --outputFile "/tmp/IMS-bankz-reg-verif-$$.txt"
-run_job_and_wait "/tmp/IMS-bankz-reg-verif-$$.txt" "4"
+# CSLUSPOC returns CC=8 when IMS responds with a non-zero condition (normal during
+# early initialization on a real LPAR — the plex is up but IMS hasn't fully joined yet)
+run_job_and_wait "/tmp/IMS-bankz-reg-verif-$$.txt" "8"
 
 python "$SCRIPTS_DIR/../lib/render_template.py" --configFile $CONFIG_FILE \
     --extraVar "region_num=3" --templateFile "$SCRIPTS_DIR/../jcl/ims/templates/jmp/STOPJMP.j2"\
