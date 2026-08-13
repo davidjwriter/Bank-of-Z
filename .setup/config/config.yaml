@@ -39,7 +39,7 @@ global:
   zos_current_user: "${ZOS_CURRENT_USER}"
   sys_proclib: "USER.PROCLIB"
   tcpip_hlq: "TCPIP"
-  igzxjni2: "/usr/lpp/IBM/cobol/igyv6r5/lib/igzxjni2.x"
+  igzxjni2: "/usr/lpp/IBM/cobol/V6R5M0/lib/igzxjni2.x"
   igy_hlq: "IGY.V6R5M0"
   fel_hlq: "FEL.V17R0M0"
   ipv_hlq: "IPV.V1R9M0"
