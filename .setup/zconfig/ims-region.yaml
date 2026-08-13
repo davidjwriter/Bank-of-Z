@@ -5,7 +5,7 @@ vars:
   ims_hlq: BANKZ.IMSO
   ims_sys_hlq: DFS.V15RXM0
   ims_plex: PLEX1
-  ims_ixvolser: TMVS5A       # volume serial — must match global.ims_ixvolser in config.yaml
+  ims_ixvolser: TMVS5A       # volume serial - must match global.ims_ixvolser in config.yaml
   db2_hlq: DSN131
   db2_ssid: DBD1
   java_home: "/usr/lpp/java/java21/current_64"

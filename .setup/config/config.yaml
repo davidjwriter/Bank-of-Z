@@ -69,7 +69,7 @@ global:
   ims_java_dir: "/usr/lpp/ims/ims15/imsjava"
   ims_datastore: "IMSO"
   ims_dfsplex: "PLEX1"
-  ims_ixvolser: "TMVS5A"      # ← CONFIRM with sysadmin: volume serial for IMS datasets
+  ims_ixvolser: "TMVS5A"      # CONFIRM with sysadmin: volume serial for IMS datasets
   asm_hlq: "ASM"
   
   # DB2
