@@ -43,6 +43,23 @@ default_cmci_insecure: True
 default_cmci_cert: ""
 default_cmci_key: ""
 
+# Structured CICS connection definition consumed by cics_cmci_prog_update
+# building block and referenced as {{ cics_sys_def }} in types_pattern_mapping.yml.
+# Key names must match the building block exactly: cmci_host, cmci_port,
+# scheme, insecure (not cmci_scheme / cmci_insecure).
+cics_sys_def:
+  context: "{{ default_cics_context }}"
+  cmci_host: "{{ default_cmci_host }}"
+  cmci_port: "{{ default_cmci_port }}"
+  cmci_user: "{{ default_cics_user }}"
+  cmci_password: "{{ default_cics_password }}"
+  scheme: "{{ default_cmci_scheme }}"
+  insecure: "{{ default_cmci_insecure }}"
+  csd_group: "{{ default_csd_group }}"
+  cmci_action: "{{ default_cics_cmci_action }}"
+  cics_sdfhload: "{{ default_env_cics_sdfhload }}"
+  cics_csd: "{{ default_env_cics_csd }}"
+
 # DB2
 default_db2_sdsnload: "{{ db2.sdsnload }}"
 default_pkg_jobcard: "BINDPKG JOB 'WD-PKGBIND',MSGLEVEL=(1,1),MSGCLASS=R,NOTIFY=&SYSUID"
