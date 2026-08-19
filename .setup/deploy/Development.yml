@@ -32,8 +32,8 @@ deploy_cfg_home: "{{  extra_vars.deploy_cfg_home if extra_vars.deploy_cfg_home i
 default_cics_user: "{{ cics.user }}"
 default_cics_password: ""
 default_cics_context: "CICSBOZ"
-default_cmci_host: "127.0.0.1"
-default_cmci_port: 27100
+default_cmci_host: "{{ cics.host if cics.host is defined else '127.0.0.1' }}"
+default_cmci_port: "{{ cics.cmci_port if cics.cmci_port is defined else 27100 }}"
 default_cmci_scheme: "http"
 default_csd_group: "BANKZGRP"
 default_cics_cmci_action: "NEWCOPY"
@@ -42,23 +42,8 @@ default_env_cics_csd: "{{default_cics_context}}.DFHCSD"
 default_cmci_insecure: True
 default_cmci_cert: ""
 default_cmci_key: ""
-
-# Structured CICS connection definition consumed by cics_cmci_prog_update
-# building block and referenced as {{ cics_sys_def }} in types_pattern_mapping.yml.
-# Key names must match the building block exactly: cmci_host, cmci_port,
-# scheme, insecure (not cmci_scheme / cmci_insecure).
-cics_sys_def:
-  context: "{{ default_cics_context }}"
-  cmci_host: "{{ default_cmci_host }}"
-  cmci_port: "{{ default_cmci_port }}"
-  cmci_user: "{{ default_cics_user }}"
-  cmci_password: "{{ default_cics_password }}"
-  scheme: "{{ default_cmci_scheme }}"
-  insecure: "{{ default_cmci_insecure }}"
-  csd_group: "{{ default_csd_group }}"
-  cmci_action: "{{ default_cics_cmci_action }}"
-  cics_sdfhload: "{{ default_env_cics_sdfhload }}"
-  cics_csd: "{{ default_env_cics_csd }}"
+# cics_sys_def is built by zDeploy's global cics_config.yml from the
+# default_cmci_* variables above — no local definition needed.
 
 # DB2
 default_db2_sdsnload: "{{ db2.sdsnload }}"
