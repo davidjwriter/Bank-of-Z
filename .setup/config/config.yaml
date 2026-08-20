@@ -38,7 +38,7 @@ global:
   zos_admin_user: "TIVMVS"
   zos_current_user: "${ZOS_CURRENT_USER}"
   sys_proclib: "USER.PROCLIB"
-  tcpip_hlq: "TCPIP"
+  tcpip_hlq: "EZA"
   igzxjni2: "/usr/lpp/IBM/cobol/V6R5M0/lib/igzxjni2.x"
   igy_hlq: "IGY.V6R5M0"
   fel_hlq: "FEL.V17R0M0"

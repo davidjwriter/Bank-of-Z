@@ -11,7 +11,7 @@ vars:
   db2_hlq: "DSN131"
   db2_sdsnload_hlq: "DSN.V13R1M0"
   eqaw_hlq: "EQAW.SEQAMOD"
-  tcpip_hlq: "TCPIP"
+  tcpip_hlq: "EZA"
   cics_sec: "YES"
 
 cics_region:
