@@ -177,6 +177,7 @@ zconfig apply \
   -e cmci_port="$CICS_CMCI_PORT" \
   -e debug_hlq="$DEBUG_HLQ" \
   -e db2_hlq="${DB2_HLQ}" \
+  -e db2_sdsnload_hlq="${DB2_SDSNLOAD_HLQ}" \
   -e cics_hlq="${CICS_HLQ}" \
   -e cics_uss_dir="${CICS_USS_DIR}" \
   -e tcpip_hlq="${DEBUG_TCPIP_HQL}" \

@@ -9,6 +9,7 @@ vars:
   cics_hlq: "DFH.V6R3M0"
   cics_uss_dir: "/usr/lpp/cicsts/dfh630"
   db2_hlq: "DSN131"
+  db2_sdsnload_hlq: "DSN.V13R1M0"
   eqaw_hlq: "EQAW.SEQAMOD"
   tcpip_hlq: "TCPIP"
   cics_sec: "YES"
@@ -52,8 +53,8 @@ cics_region:
         dsn: "{{ vars.region_hlq }}.{{ vars.applid }}.TABLES.SOURCE"
     steplib:
       top_data_sets:
-        - "{{ vars.db2_hlq }}.SDSNLOAD"
-        - "{{ vars.db2_hlq }}.SDSNEXIT"
+        - "{{ vars.db2_sdsnload_hlq }}.SDSNLOAD"
+        - "{{ vars.db2_sdsnload_hlq }}.SDSNEXIT"
 
   sit_parameters:
     start: INITIAL
