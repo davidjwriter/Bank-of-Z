@@ -308,7 +308,7 @@ dcp "/tmp/CICS${APP_SHORT_NAME}J.jcl" "${CICS_SYS_PROCLIB}(CICS${APP_SHORT_NAME}
 # =========================
 # Stage 8: Start CICS region
 # =========================
-print_stage "STAGE 5: Start CICS region"
+print_stage "STAGE 8: Start CICS region"
 if [[ "$CICS_SYS_PROCLIB" != "${APP_HLQ}.PROCLIB" ]]; then
     opercmd "S CICS${APP_SHORT_NAME}"
 else
@@ -316,7 +316,49 @@ else
 fi
 sleep 5
 print_info "CICS Region Job Started"
-sleep 10
+
+# =========================
+# Wait for CMCI to be ready
+# Poll http://<host>:<port>/CICSSystemManagement until HTTP 2xx/3xx.
+# The JVM server (EYUSMSSJ) can take 60-120s to initialise.
+# =========================
+print_info "Waiting for CMCI to become available on port $CICS_CMCI_PORT ..."
+CMCI_URL="http://127.0.0.1:${CICS_CMCI_PORT}/CICSSystemManagement/CICSProgram/CICS${APP_SHORT_NAME}"
+CMCI_TIMEOUT=180
+CMCI_INTERVAL=10
+CMCI_ELAPSED=0
+until curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$CMCI_URL" | grep -q "^[23]"; do
+    if [ "$CMCI_ELAPSED" -ge "$CMCI_TIMEOUT" ]; then
+        print_error "CMCI did not become available on port $CICS_CMCI_PORT after ${CMCI_TIMEOUT}s."
+        print_error "Check that CICS${APP_SHORT_NAME} started and JVM server EYUSMSSJ is ENABLED."
+        exit 1
+    fi
+    print_info "  CMCI not ready yet, retrying in ${CMCI_INTERVAL}s... (${CMCI_ELAPSED}s elapsed)"
+    sleep "$CMCI_INTERVAL"
+    CMCI_ELAPSED=$((CMCI_ELAPSED + CMCI_INTERVAL))
+done
+print_success "CMCI is ready on port $CICS_CMCI_PORT (${CMCI_ELAPSED}s elapsed)"
+
+# =========================
+# Stage 9: Install CSD group into CICS region
+# =========================
+print_stage "STAGE 9: Install CSD group into CICS region"
+print_info "Installing BANKZGRP into CICS${APP_SHORT_NAME} ..."
+INSTALL_RC=$(curl -s -o /tmp/csd-install-$$.xml -w "%{http_code}" \
+    --max-time 10 \
+    -u "${CICS_USER}:${CICS_PASSWORD}" \
+    -X PUT \
+    -H "Content-Type: application/xml" \
+    -d '<request><action name="INSTALL"></action></request>' \
+    "http://127.0.0.1:${CICS_CMCI_PORT}/CICSSystemManagement/CICSCSDGroup/CICS${APP_SHORT_NAME}?CRITERIA=(GROUP=BANKZGRP)")
+if echo "$INSTALL_RC" | grep -q "^[23]"; then
+    print_success "CSD group BANKZGRP installed successfully"
+else
+    print_warning "CSD group install returned HTTP $INSTALL_RC — programs may need manual CEDA INSTALL"
+    cat /tmp/csd-install-$$.xml 2>/dev/null || true
+fi
+rm -f /tmp/csd-install-$$.xml
+
 print_info ""
 print_info "To manage the region:"
 if [[ "$CICS_SYS_PROCLIB" != "${APP_HLQ}.PROCLIB" ]]; then
