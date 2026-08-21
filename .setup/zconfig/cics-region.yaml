@@ -12,6 +12,7 @@ vars:
   db2_sdsnload_hlq: "DSN.V13R1M0"
   tcpip_hlq: "EZA"
   cics_sec: "YES"
+  db2_ssid: "DBD1"
 
 cics_region:
   applid: "{{ vars.applid }}"
@@ -72,7 +73,10 @@ cics_region:
     xtst: "NO"
     xdct: "NO"
     tcpip: "YES"
-    pltpi: "SI"
+
+  startup_programs:
+    second_phase:
+      - EZACIC20
 
   extensions:
     cics_cmci:
@@ -84,4 +88,3 @@ cics_region:
   jvm_profile_dir: "{{ vars.region_uss_dir }}/{{ vars.applid }}/JVMProfiles"
   jvm_profiles:
     - "EYUSMSSJ.jvmprofile"
- 

@@ -32,8 +32,8 @@ deploy_cfg_home: "{{  extra_vars.deploy_cfg_home if extra_vars.deploy_cfg_home i
 default_cics_user: "{{ cics.user }}"
 default_cics_password: ""
 default_cics_context: "CICSBOZ"
-default_cmci_host: "{{ cics.host if cics.host is defined else '127.0.0.1' }}"
-default_cmci_port: "{{ cics.cmci_port if cics.cmci_port is defined else 27100 }}"
+default_cmci_host: "127.0.0.1"
+default_cmci_port: 27100
 default_cmci_scheme: "http"
 default_csd_group: "BANKZGRP"
 default_cics_cmci_action: "NEWCOPY"
@@ -42,11 +42,9 @@ default_env_cics_csd: "{{default_cics_context}}.DFHCSD"
 default_cmci_insecure: True
 default_cmci_cert: ""
 default_cmci_key: ""
-# cics_sys_def is built by zDeploy's global cics_config.yml from the
-# default_cmci_* variables above — no local definition needed.
 
 # DB2
-default_db2_sdsnload: "{{ db2.sdsnload }}"
+default_db2_sdsnload: "{{ db2.db2_hlq }}.SDSNLOAD"
 default_pkg_jobcard: "BINDPKG JOB 'WD-PKGBIND',MSGLEVEL=(1,1),MSGCLASS=R,NOTIFY=&SYSUID"
 default_plan_jobcard: "BINDPLA JOB 'WD-PLANBIND',MSGLEVEL=(1,1),MSGCLASS=R,NOTIFY=&SYSUID"
 default_db2_sqlid: "{{ db2.sqlid }}"
@@ -60,9 +58,8 @@ db2_bind_package_template: "db2_bind_package.jcl.j2"
 db2_bind_plan_template: "db2_bind_plan.jcl.j2"
 
 # z/OS Connect
-# default_* names are required by zDeploy's global/zos_connect.yml which resolves
-# app_zos_connect_* overrides falling back to these defaults.
 default_zos_connect_root: "{{ extra_vars.zos_connect_root if extra_vars.zos_connect_root is defined else '/var/zosconnect/servers/wazideploy-cics' }}"
+zos_connect_root: "{{ default_zos_connect_root }}"
 default_zos_connect_job_name: "{{ extra_vars.zos_connect_job_name if extra_vars.zos_connect_job_name is defined else 'BAQ' + app.short_name }}"
 cics_host: "{{ extra_vars.cics_host if extra_vars.cics_host is defined else 'localhost' }}"
 cics_port: "{{ extra_vars.cics_port if extra_vars.cics_port is defined else '2006' }}"
@@ -74,9 +71,10 @@ frontend_root: "{{ extra_vars.frontend_root if extra_vars.frontend_root is defin
 frontend_server_name: "{{ extra_vars.frontend_server_name if extra_vars.frontend_server_name is defined else (app.base_name | lower) ~ '-frontend' }}"
 frontend_job_name: "{{ extra_vars.frontend_job_name if extra_vars.frontend_job_name is defined else 'FE' + app.short_name }}"
 frontend_http_port: "{{ extra_vars.frontend_http_port if extra_vars.frontend_http_port is defined else '9081' }}"
+
 template_name_zosconnect_config:
   src: '../deploy/zos_connect_app_config.xml.j2'
-  dest: '{{default_zos_connect_root}}/configDropins/overrides/{{api_name}}.xml'
+  dest: '{{zos_connect_root}}/configDropins/overrides/{{api_name}}.xml'
   mode: 0755
   delegate: false
 
@@ -103,8 +101,6 @@ system_command_refresh_frontend:
   cmd: 'MODIFY {{frontend_job_name}},REFRESH,APPS'
   verbose: true
   wait_time_s: 3
-
-
 
 # load shared configuration
 include_global_config:
@@ -140,7 +136,7 @@ sandbox_path: "{{ extra_vars.sandbox_path if extra_vars.sandbox_path is defined 
 
 # Variables for ims_acb_gen building block
 ims_acb_gen_default:
-   acb_lib: "{{ ims_hlq }}.{{ ims_datastore }}.ACBLIB"
+   acb_lib: "{{ ims_hlq }}.{{ ims_datastore }}.ACBLIBA"
    command_input: "BUILD"
    steplib :
      - "{{ ims_hlq }}.{{ ims_datastore }}.SDFSRESL"
@@ -153,7 +149,7 @@ ims_acb_gen_default:
 
 ims_catalog_populate_default:
      acb_lib:
-       - "{{ ims_hlq }}.{{ ims_datastore }}.ACBLIB"
+       - "{{ ims_hlq }}.{{ ims_datastore }}.ACBLIBA"
      mode: "UPDATE"
      online_batch: true
      dfsdf_member: "000"
@@ -209,12 +205,5 @@ jcl_ims_catpop:
 jcl_ims_maclib:
   src: "{{script_dir}}/../deploy/ims_maclib.jcl.j2"
   dest: "{{working_folder}}/ims_maclib.jcl"
-  use_template: True
-  max_rc: 8
-
-# Variables for ims_ims_spoc jcl building block
-jcl_ims_spoc:
-  src: "{{script_dir}}/../deploy/ims_spoc.jcl.j2"
-  dest: "{{working_folder}}/ims_spoclib.jcl"
   use_template: True
   max_rc: 8

@@ -19,7 +19,7 @@ source "$SCRIPTS_DIR/../config/setenv.sh"
 exec > >(while IFS= read -r line; do
     line="${line%"${line##*[![:space:]]}"}"
     [[ -z "$line" ]] && continue
-    printf "${CYAN}[ZCONFIG-CICS]${NC} %s\n" "${line}"
+    printf "${CYAN}[ZCONFIG-CICS]${NC} %s\n" "${line}" 2>/dev/null || true
 done) 2>&1
 
 finalize_results() {
@@ -114,7 +114,7 @@ JVMTRACE=//DD:JVMTRACE
 JVMLOG=//DD:JVMLOG
 -Xgcpolicy:gencon
 -Xscmx128M
--Xshareclasses:none
+-Xshareclasses:name=cicsts.&APPLID;,groupAccess,nonfatal
 _BPXK_DISABLE_SHLIB=YES
 -Dcom.ibm.tools.attach.enable=no
 EOF
@@ -144,12 +144,6 @@ resourceOverrides:
         group: EQA
       overrides:
         portnumber: $CICS_DEBUG_PORT
-  - ipconn:
-    - selector:
-        name: ZOSCONN
-        group: BANKZGRP
-      overrides:
-        port: $CICS_IPIC_PORT
 EOF
 
 print_success "Overrides file created successfully!"
@@ -182,6 +176,7 @@ zconfig apply \
   -e cics_uss_dir="${CICS_USS_DIR}" \
   -e tcpip_hlq="${DEBUG_TCPIP_HQL}" \
   -e cics_sec="${CICS_SEC}" \
+  -e db2_ssid="${DB2_SSID}" \
   cics-region.yaml
 
 RC=$?
@@ -196,9 +191,9 @@ fi
 deactivate
 
 # =========================
-# Stage 4a: Create TCP/IP config (optional, non-fatal)
+# Stage 4: Create DEBUG Items
 # =========================
-print_stage "Stage 4: Create TCP/IP and PLT items"
+print_stage "Stage 4: Create DEBUG Items (non-fatal)"
 set +e
 export RIGHT='APPLID of CICS                       X'
 export LEFT='               APPLID=CICS'
@@ -206,31 +201,14 @@ export SPACES=$((8-${#APP_SHORT_NAME} - 1))
 export MIDDLE=$(printf '%s,%*s' ${APP_SHORT_NAME} $SPACES "")
 
 rm -f "/tmp/tcpip-create*"
-rm -f "/tmp/plt-create*"
 python "$SCRIPTS_DIR/../lib/render_template.py" --configFile $CONFIG_FILE \
     --extraVar "cics_hlq=${APP_HLQ}.CICS${APP_SHORT_NAME}" --extraVar "applid_line=${LEFT}${MIDDLE}${RIGHT}" \
     --extraVar "tcpip_hlq=${DEBUG_TCPIP_HQL}" \
     --templateFile "$SCRIPTS_DIR/../jcl/cics/tcpip-create.j2"  --outputFile "/tmp/tcpip-create-$$.jcl"
-run_job_and_wait "/tmp/tcpip-create-$$.jcl" || print_warning "tcpip-create job failed (non-fatal, debug only)"
+run_job_and_wait "/tmp/tcpip-create-$$.jcl" || print_warning "tcpip-create failed (non-fatal, debug only)"
 
 opercmd "S EQARMTD" 2>/dev/null || true
 set -e
-
-# =========================
-# Stage 4b: Assemble and link DFHPLTSI into the app LOADLIB.
-# This is REQUIRED. If PLTPI=SI is set in SIT and the load module
-# is missing or references EQA0CPLT (unavailable), CICS issues
-# DFHSI1579D (a reply-required WTOR) and hangs until S222.
-# =========================
-print_info "Assembling DFHPLTSI PLT table into ${APP_HLQ}.CICS${APP_SHORT_NAME}.LOADLIB ..."
-drm "${APP_HLQ}.CICS${APP_SHORT_NAME}.TABLES.SOURCE" 2> /dev/null || true
-python "$SCRIPTS_DIR/../lib/render_template.py" --configFile $CONFIG_FILE \
-    --extraVar "cics_hlq=${APP_HLQ}.CICS${APP_SHORT_NAME}" \
-    --extraVar "cics_system_hlq=${CICS_HLQ}" \
-    --extraVar "app_loadlib=${APP_HLQ}.${APP_ZOS_VERSION}.LOADLIB" \
-    --templateFile "$SCRIPTS_DIR/../jcl/cics/plt-create.j2" --outputFile "/tmp/plt-create-$$.jcl"
-run_job_and_wait "/tmp/plt-create-$$.jcl"
-print_success "DFHPLTSI assembled and linked successfully"
 
 # ======================================
 # Stage 5: Add CICS region to dtcn.ports
@@ -287,8 +265,8 @@ set -e
 # Stage 7: Generate CICS proc
 # =========================
 # Create JCL with each line padded to exactly 80 characters for FB80 dataset
-rm -f "/tmp/CICS${APP_SHORT_NAME}.jcl"
-cat > "/tmp/CICS${APP_SHORT_NAME}.jcl" << EOF
+rm -f "/tmp/CICS${APP_SHORT_NAME}-$$.jcl"
+cat > "/tmp/CICS${APP_SHORT_NAME}-$$.jcl" << EOF
 //CICS${APP_SHORT_NAME}  PROC
 //*
 //* Bank of Z CICS started task
@@ -302,14 +280,14 @@ cat > "/tmp/CICS${APP_SHORT_NAME}.jcl" << EOF
 EOF
 
 # Convert to EBCDIC
-a2e -f ISO8859-1 -t IBM-1047 "/tmp/CICS${APP_SHORT_NAME}.jcl"
+a2e -f ISO8859-1 -t IBM-1047 "/tmp/CICS${APP_SHORT_NAME}-$$.jcl"
 
 # Copy to PROCLIB using dcp
 print_info "Copying JCL to ${CICS_SYS_PROCLIB}..."
-dcp "/tmp/CICS${APP_SHORT_NAME}.jcl" "${CICS_SYS_PROCLIB}(CICS${APP_SHORT_NAME})"
+dcp "/tmp/CICS${APP_SHORT_NAME}-$$.jcl" "${CICS_SYS_PROCLIB}(CICS${APP_SHORT_NAME})"
 
 # Clean up temp files
-rm -f "/tmp/CICS${APP_SHORT_NAME}.jcl"
+rm -f "/tmp/CICS${APP_SHORT_NAME}-$$.jcl"
 
 python "$SCRIPTS_DIR/../lib/render_template.py" --configFile $CONFIG_FILE \
     --extraVar "proclib=${CICS_SYS_PROCLIB}" --extraVar "task_name=CICS${APP_SHORT_NAME}" \
@@ -320,7 +298,7 @@ dcp "/tmp/CICS${APP_SHORT_NAME}J.jcl" "${CICS_SYS_PROCLIB}(CICS${APP_SHORT_NAME}
 # =========================
 # Stage 8: Start CICS region
 # =========================
-print_stage "STAGE 8: Start CICS region"
+print_stage "STAGE 5: Start CICS region"
 if [[ "$CICS_SYS_PROCLIB" != "${APP_HLQ}.PROCLIB" ]]; then
     opercmd "S CICS${APP_SHORT_NAME}"
 else
@@ -329,11 +307,7 @@ fi
 sleep 5
 print_info "CICS Region Job Started"
 
-# =========================
-# Wait for CMCI to be ready
-# Poll http://<host>:<port>/CICSSystemManagement until HTTP 2xx/3xx.
-# The JVM server (EYUSMSSJ) can take 60-120s to initialise.
-# =========================
+# Wait for CMCI to be ready - the JVM server (EYUSMSSJ) can take 60-120s
 print_info "Waiting for CMCI to become available on port $CICS_CMCI_PORT ..."
 CMCI_URL="http://127.0.0.1:${CICS_CMCI_PORT}/CICSSystemManagement/CICSProgram/CICS${APP_SHORT_NAME}"
 CMCI_TIMEOUT=300
@@ -350,26 +324,6 @@ until curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$CMCI_URL" | grep -q 
     CMCI_ELAPSED=$((CMCI_ELAPSED + CMCI_INTERVAL))
 done
 print_success "CMCI is ready on port $CICS_CMCI_PORT (${CMCI_ELAPSED}s elapsed)"
-
-# =========================
-# Stage 9: Install CSD group into CICS region
-# =========================
-print_stage "STAGE 9: Install CSD group into CICS region"
-print_info "Installing BANKZGRP into CICS${APP_SHORT_NAME} ..."
-INSTALL_RC=$(curl -s -o /tmp/csd-install-$$.xml -w "%{http_code}" \
-    --max-time 10 \
-    -u "${CICS_USER}:${CICS_PASSWORD}" \
-    -X PUT \
-    -H "Content-Type: application/xml" \
-    -d '<request><action name="INSTALL"></action></request>' \
-    "http://127.0.0.1:${CICS_CMCI_PORT}/CICSSystemManagement/CICSCSDGroup/CICS${APP_SHORT_NAME}?CRITERIA=(GROUP=BANKZGRP)")
-if echo "$INSTALL_RC" | grep -q "^[23]"; then
-    print_success "CSD group BANKZGRP installed successfully"
-else
-    print_warning "CSD group install returned HTTP $INSTALL_RC - programs may need manual CEDA INSTALL"
-    cat /tmp/csd-install-$$.xml 2>/dev/null || true
-fi
-rm -f /tmp/csd-install-$$.xml
 
 print_info ""
 print_info "To manage the region:"
