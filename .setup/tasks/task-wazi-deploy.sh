@@ -167,7 +167,7 @@ print_info "Starting wazideploy-deploy for BankZ"
 # Poll until HTTP 2xx/3xx or timeout. The CICS JVM server (EYUSMSSJ)
 # can take 60-120s to initialise after the region starts.
 # =========================
-CMCI_HOST="${default_cmci_host:-127.0.0.1}"
+CMCI_HOST="127.0.0.1"
 CMCI_PORT="${CICS_CMCI_PORT:-27100}"
 CMCI_APPLID="CICS${APP_SHORT_NAME}"
 CMCI_URL="http://${CMCI_HOST}:${CMCI_PORT}/CICSSystemManagement/CICSProgram/${CMCI_APPLID}"

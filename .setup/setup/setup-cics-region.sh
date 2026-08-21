@@ -114,7 +114,7 @@ JVMTRACE=//DD:JVMTRACE
 JVMLOG=//DD:JVMLOG
 -Xgcpolicy:gencon
 -Xscmx128M
--Xshareclasses:name=cicsts.&APPLID;,groupAccess,nonfatal
+-Xshareclasses:none
 _BPXK_DISABLE_SHLIB=YES
 -Dcom.ibm.tools.attach.enable=no
 EOF
