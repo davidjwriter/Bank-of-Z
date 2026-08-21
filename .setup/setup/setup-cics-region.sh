@@ -199,7 +199,10 @@ deactivate
 # =========================
 JVM_PROFILE="$SANDBOX_DIR/CICS${APP_SHORT_NAME}/JVMProfiles/EYUSMSSJ.jvmprofile"
 if [ -f "$JVM_PROFILE" ]; then
-    sed -i 's/-Xshareclasses:name=cicsts.*/-Xshareclasses:none/' "$JVM_PROFILE"
+    JVM_PROFILE_TMP="${JVM_PROFILE}.tmp$$"
+    sed 's/-Xshareclasses:name=cicsts.*/-Xshareclasses:none/' "$JVM_PROFILE" > "$JVM_PROFILE_TMP" \
+        && mv "$JVM_PROFILE_TMP" "$JVM_PROFILE" \
+        || { rm -f "$JVM_PROFILE_TMP"; print_error "Failed to patch JVM profile"; exit 1; }
     print_success "JVM profile patched: -Xshareclasses:none"
 else
     print_warning "JVM profile not found at $JVM_PROFILE - skipping patch"
