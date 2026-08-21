@@ -10,7 +10,6 @@ vars:
   cics_uss_dir: "/usr/lpp/cicsts/dfh630"
   db2_hlq: "DSN131"
   db2_sdsnload_hlq: "DSN.V13R1M0"
-  eqaw_hlq: "EQAW.SEQAMOD"
   tcpip_hlq: "EZA"
   cics_sec: "YES"
 
@@ -42,8 +41,6 @@ cics_region:
     job_parameters:
       region: 0M
     dfhrpl:
-      top_data_sets:
-        - "{{ vars.debug_hlq }}.SEQAMOD"
       data_sets:
         - SYS1.SIEAMIGE
         - SYS1.MIGLIB
