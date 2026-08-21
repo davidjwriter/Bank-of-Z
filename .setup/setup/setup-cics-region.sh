@@ -96,13 +96,17 @@ set -e
 tsocmd "ALLOC DA('${APP_HLQ}.${APP_ZOS_VERSION}.LOADLIB') NEW CATALOG DSNTYPE(LIBRARY) DSORG(PO) RECFM(U) BLKSIZE(32760) SPACE(100,20) CYL"
 
 # =============================================
-# Stage 1: Create JVM profile file
+# Stage 1: Create JVM profile files
+# EYUSMSSJ = CPSM SMSS JVM server
+# EYUCMCIJ = CMCI REST API JVM server (must also exist)
+# Both need -Xshareclasses:none on this LPAR.
 # =============================================
-print_stage "STAGE 1: Create JVM profile file"
+print_stage "STAGE 1: Create JVM profile files"
 
 zconfig_dir="$SCRIPTS_DIR/../zconfig"
 
-cat > "$zconfig_dir/EYUSMSSJ.jvmprofile" <<EOF
+for jvm_profile_name in EYUSMSSJ EYUCMCIJ; do
+cat > "$zconfig_dir/${jvm_profile_name}.jvmprofile" <<EOF
 JAVA_HOME=$JAVA_HOME
 WORK_DIR=$SANDBOX_DIR
 -Xms128M
@@ -120,8 +124,9 @@ JVMLOG=//DD:JVMLOG
 _BPXK_DISABLE_SHLIB=YES
 -Dcom.ibm.tools.attach.enable=no
 EOF
+done
 
-print_success "JVM profile file created successfully!"
+print_success "JVM profile files created successfully!"
 
 # =============================================
 # Stage 2: Create CICS resource overrides file
@@ -368,7 +373,7 @@ print_info ""
 # =========================
 # Stage 9: Cleanup
 # =========================
-rm -f "$zconfig_dir/EYUSMSSJ.jvmprofile"
+rm -f "$zconfig_dir/EYUSMSSJ.jvmprofile" "$zconfig_dir/EYUCMCIJ.jvmprofile"
 print_success "CICS Bank of Z setup completed"
  
 exit 0
