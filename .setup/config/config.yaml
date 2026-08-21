@@ -23,62 +23,64 @@ global:
   # Tools
   java_home: "{{ sandbox.root }}/tools/J21.0_64"
   python_home: "/usr/lpp/IBM/cyp/v3r14/pyz"
-  zoau_home: "/usr/lpp/IBM/zoau"  # versioned installs: /usr/lpp/IBM/zoau/v1r4 or /usr/lpp/IBM/zoau/v1r3  pre-1.3: /usr/lpp/IBM/zoautil
+  zoau_home: "/usr/lpp/IBM/zoautil"
   zconfig_home: "{{ global.sandbox_root }}/tools/zconfig"
   zcb_home: "{{ global.sandbox_root }}/tools/zrb/cics-resource-builder-1.0.6"
   dbb_home: "{{ global.sandbox_root }}/tools/dbb"
   gradle_home:  "{{ global.sandbox_root }}/tools/gradle-9.5.1"
   zcodescan_home: "/global/opt/pyenv/akf"
-  wazideploy_home: "/global/opt/pyenv/gdp"
-  zosconnect_home: "/usr/lpp/IBM/zosconnect"
+  wazideploy_home: "/usr/local/sandboxes/tools/gdp"
+  zosconnect_home: "/usr/lpp/IBM/zosconnect/v3r0"
   liberty_home: "/usr/lpp/liberty_zos/25.0.0.9"
 
   # z/OS System
-  zos_admin_user: "${USER}"
-  zos_current_user: "${USER}"
-  zos_ca_label: "VSICA"
-  zos_keyring: "BOZRING"
-  zos_create_certs: True
-  sys_proclib: "SYS1.PROCLIB"
-  tcpip_hlq: "TCPIP"
-  igzxjni2: "/usr/lpp/IBM/cobol/igyv6r5/lib/igzxjni2.x"
+  zos_admin_user: "TIVMVS"
+  zos_current_user: "${ZOS_CURRENT_USER}"
+  sys_proclib: "USER.PROCLIB"
+  tcpip_hlq: "EZA"
+  igzxjni2: "/usr/lpp/IBM/cobol/V6R5M0/lib/igzxjni2.x"
   igy_hlq: "IGY.V6R5M0"
-  fel_hlq: "FEL"
-  ipv_hlq: "IPV"
-  pli_hlq: "PLI.V6R2M0"
+  fel_hlq: "FEL.V17R0M0"
+  ipv_hlq: "IPV.V1R9M0"
+  pli_hlq: "IBMZ.V5R2M0"
   debug_hlq: "EQAW"
   asm_hlq: "ASM"
 
   # GUI
   zosconnect_http_port: 9080
-  zosconnect_https_port: 9444
+  zosconnect_https_port: 9443
   zosconnect_task_user: "{{ global.zos_admin_user }}"
 
-  # Frontend (separate Liberty server - FE<APP_SHORT_NAME> on port 9445)
+  # Frontend
   frontend_http_port: 9081
-  frontend_https_port: 9445
+  frontend_https_port: 9444
   frontend_task_user: "{{ global.zos_admin_user}}"
 
 
   # CICS
-  cics_hlq: "CICSTS63"
-  cics_uss_dir: "/usr/lpp/cicsts/cicsts63"
+  cics_hlq: "DFH.V6R3M0"
+  cics_uss_dir: "/usr/lpp/cicsts/dfh630"
   cics_sec: "YES"
-  
+
   # IMS
   ims_disabled: "false"
-  ims_sys_hlq: "IMSV15"
-  ims_java_dir: "/usr/lpp/ims/imsjava"
-  ims_datastore: "IMS2"
-  ims_dfsplex: "PLEX2"
-  ims_ixvolser: "IMSV15"
-  
+  ims_sys_hlq: "DFS.V15RXM0"
+  ims_java_home: "/usr/lpp/ims/ims15/imsjava"
+  ims_java_dir: "/usr/lpp/ims/ims15/imsjava"
+  ims_datastore: "IMSO"
+  ims_dfsplex: "PLEX1"
+  ims_ixvolser: "TMVS5A"      # CONFIRM with sysadmin: volume serial for IMS datasets
+
   # DB2
-  db2_hlq: "DB2V13"
+  db2_hlq: "DSN131"
+  db2_sdsnload_hlq: "DSN.V13R1M0"
   db2_dsntep: "DSNTEP13"
   db2_ssid: "DBD1"
-  db2_runlib: "{{ global.db2_ssid }}.RUNLIB.LOAD"
+  db2_runlib: "DSN131.RUNLIB.LOAD"
   db2_sqlid: "{{ global.zos_current_user }}"
+  db2_sysadm: "SYSADM"
+  db2_sysadm_password: "TIVMVS"
+  db2_java_home: "/usr/lpp/db2d10"
   db2_java_dir: "/usr/lpp/db2d10"
   db2_grants:
   - "CICSUSER"

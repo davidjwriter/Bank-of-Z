@@ -162,6 +162,30 @@ fi
 
 print_info "Starting wazideploy-deploy for BankZ"
 
+# =========================
+# Wait for CMCI to be ready
+# Poll until HTTP 2xx/3xx or timeout. The CICS JVM server (EYUSMSSJ)
+# can take 60-120s to initialise after the region starts.
+# =========================
+CMCI_HOST="127.0.0.1"
+CMCI_PORT="${CICS_CMCI_PORT:-27100}"
+CMCI_APPLID="CICS${APP_SHORT_NAME}"
+CMCI_URL="http://${CMCI_HOST}:${CMCI_PORT}/CICSSystemManagement/CICSProgram/${CMCI_APPLID}"
+CMCI_TIMEOUT=180
+CMCI_INTERVAL=10
+CMCI_ELAPSED=0
+print_info "Waiting for CMCI to become available at ${CMCI_URL} ..."
+until curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$CMCI_URL" | grep -q "^[23]"; do
+    if [ "$CMCI_ELAPSED" -ge "$CMCI_TIMEOUT" ]; then
+        print_error "CMCI did not become available after ${CMCI_TIMEOUT}s — is CICS${APP_SHORT_NAME} running?"
+        exit 1
+    fi
+    print_info "  CMCI not ready yet, retrying in ${CMCI_INTERVAL}s... (${CMCI_ELAPSED}s elapsed)"
+    sleep "$CMCI_INTERVAL"
+    CMCI_ELAPSED=$((CMCI_ELAPSED + CMCI_INTERVAL))
+done
+print_success "CMCI is ready (${CMCI_ELAPSED}s elapsed)"
+
 CICS_CREDS=""
 if [ -n "${CICS_USER:-}" ]; then
     CICS_CREDS="$CICS_CREDS -e default_cics_user=$CICS_USER"
@@ -172,9 +196,9 @@ fi
 
 # Resolve environment varaiables in config file.
 export TMPL_CONFIG_FILE="/tmp/config.yaml"
-cp  "$CONFIG_FILE" "$TMPL_CONFIG_FILE.j2.$$"
+cp  "$CONFIG_FILE" "$TMPL_CONFIG_FILE.j2"
 python "$SCRIPTS_DIR/../lib/render_template.py" --configFile $CONFIG_FILE \
-    --templateFile "$TMPL_CONFIG_FILE.j2.$$"  --outputFile "$TMPL_CONFIG_FILE"
+    --templateFile "$TMPL_CONFIG_FILE.j2"  --outputFile "$TMPL_CONFIG_FILE"
 
 rm -rf "${DEPLOY_LOG_FOLDER}/work-bankz"
 

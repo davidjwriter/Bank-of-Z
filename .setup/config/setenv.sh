@@ -10,11 +10,12 @@ export LIB_DIR="$LOCAL_SCRIPTS_DIR/../lib"
 source "$LIB_DIR/utilities.sh"
 source "$LIB_DIR/colors.sh"
 source "$LIB_DIR/prerequisites.sh"
-export USER=$(printf '%s' "${USER:-${LOGNAME:-$(basename "$HOME")}}" | tr '[:lower:]' '[:upper:]')
 set +e
 # Load CICS/IMS credentials
 if [[ -f $HOME/.profile.bankz ]]; then
     source $HOME/.profile.bankz 2>/dev/null
+else
+    source $HOME/.profile 2>/dev/null
 fi
 if git rev-parse --show-toplevel >/dev/null 2>&1; then
     repo_name=$(basename "$(git rev-parse --show-toplevel)")
@@ -45,11 +46,8 @@ if [[ ! -f "$ENV_FILE" || "$ENV_FILE" -ot "$CONFIG_FILE" || "$ENV_FILE" -ot "${B
 # Global
 _BPXK_AUTOCVT=ON
 PYTHONUNBUFFERED=1
-ZOS_CURRENT_USER=$(get_section_value 'global' 'zos_current_user')
+ZOS_CURRENT_USER=$(printf '%s' "${USER:-${LOGNAME:-$(basename "$HOME")}}" | tr '[:lower:]' '[:upper:]')
 ZOS_ADMIN_USER=$(get_section_value 'global' 'zos_admin_user')
-ZOS_CA_LABEL=$(get_section_value 'global' 'zos_ca_label')
-ZOS_KEYRING=$(get_section_value 'global' 'zos_keyring')
-ZOS_CREATE_CERTS=$(get_section_value 'global' 'zos_create_certs')
 
  # Application
 APP_BASE_NAME=$(get_section_value 'app' 'base_name')
