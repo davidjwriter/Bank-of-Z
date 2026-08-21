@@ -231,6 +231,61 @@ fi
 deactivate
 
 # =========================
+# Stage 4: Configure RACF STARTED profile
+# =========================
+print_info "Configuring RACF STARTED profile..."
+set +e
+tsocmd "RDEFINE STARTED CICS${APP_SHORT_NAME}.* STDATA(USER(${CICS_USER}) TRUSTED(YES))" 2>/dev/null
+tsocmd "RALTER STARTED CICS${APP_SHORT_NAME}.* STDATA(USER(${CICS_USER}) TRUSTED(YES))" 2>/dev/null
+tsocmd "SETROPTS RACLIST(STARTED) REFRESH" 2>/dev/null
+mrm "${CICS_SYS_PROCLIB}(CICS${APP_SHORT_NAME})" 2>/dev/null || true
+chmod 777 "$SANDBOX_DIR"
+chmod -R 777 "$SANDBOX_DIR/CICS${APP_SHORT_NAME}"
+chown -R "$CICS_USER" "$SANDBOX_DIR/CICS${APP_SHORT_NAME}"
+set -e
+
+# =========================
+# Stage 5: Generate CICS proc and copy to PROCLIB
+# =========================
+print_stage "STAGE 5: Generate CICS proc"
+rm -f "/tmp/CICS${APP_SHORT_NAME}-$$.jcl"
+cat > "/tmp/CICS${APP_SHORT_NAME}-$$.jcl" << EOF
+//CICS${APP_SHORT_NAME}  PROC
+//*
+//* Bank of Z CICS started task
+//*
+//SUBMIT   EXEC PGM=IEBGENER
+//SYSPRINT DD SYSOUT=*
+//SYSIN    DD DUMMY
+//SYSUT1   DD DISP=SHR,DSN=${APP_HLQ}.CICS${APP_SHORT_NAME}.DFHSTART
+//SYSUT2   DD SYSOUT=(,INTRDR)
+//         PEND
+EOF
+a2e -f ISO8859-1 -t IBM-1047 "/tmp/CICS${APP_SHORT_NAME}-$$.jcl"
+print_info "Copying JCL to ${CICS_SYS_PROCLIB}..."
+dcp "/tmp/CICS${APP_SHORT_NAME}-$$.jcl" "${CICS_SYS_PROCLIB}(CICS${APP_SHORT_NAME})"
+rm -f "/tmp/CICS${APP_SHORT_NAME}-$$.jcl"
+
+python "$SCRIPTS_DIR/../lib/render_template.py" --configFile $CONFIG_FILE \
+    --extraVar "proclib=${CICS_SYS_PROCLIB}" --extraVar "task_name=CICS${APP_SHORT_NAME}" \
+    --extraVar "start_user=${ZOS_CURRENT_USER}" --templateFile "$SCRIPTS_DIR/../jcl/tasks/Task-start.j2" \
+    --outputFile "/tmp/CICS${APP_SHORT_NAME}J.jcl"
+dcp "/tmp/CICS${APP_SHORT_NAME}J.jcl" "${CICS_SYS_PROCLIB}(CICS${APP_SHORT_NAME}J)"
+rm -f "/tmp/CICS${APP_SHORT_NAME}J.jcl"
+
+# =========================
+# Stage 6: Start CICS region
+# =========================
+print_stage "STAGE 6: Start CICS region"
+if [[ "$CICS_SYS_PROCLIB" != "${APP_HLQ}.PROCLIB" ]]; then
+    opercmd "S CICS${APP_SHORT_NAME}"
+else
+    jsub "${CICS_SYS_PROCLIB}(CICS${APP_SHORT_NAME}J)" 2>/dev/null
+fi
+sleep 5
+print_info "CICS region started"
+
+# =========================
 # Wait for CMCI to be ready
 # The JVM server (EYUSMSSJ) can take 60-120s to initialise after zconfig starts CICS.
 # =========================
