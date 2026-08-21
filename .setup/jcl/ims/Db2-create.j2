@@ -17,7 +17,7 @@ SET CURRENT SQLID = '{{ db2.sqlid }}';
 
 CREATE DATABASE {{ ims.db2_database }}
        CCSID EBCDIC
-       BUFFERPOOL BP1
+       BUFFERPOOL BP0
        INDEXBP BP0;
 
 CREATE TABLESPACE {{ ims.db2_table }} IN {{ ims.db2_database }} ;
