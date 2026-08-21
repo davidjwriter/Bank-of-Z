@@ -105,7 +105,7 @@ print_stage "STAGE 1: Create JVM profile files"
 
 zconfig_dir="$SCRIPTS_DIR/../zconfig"
 
-for jvm_profile_name in EYUSMSSJ EYUCMCIJ; do
+for jvm_profile_name in EYUSMSSJ EYUCMCIJ zosconn; do
 cat > "$zconfig_dir/${jvm_profile_name}.jvmprofile" <<EOF
 JAVA_HOME=$JAVA_HOME
 WORK_DIR=$SANDBOX_DIR
@@ -373,7 +373,7 @@ print_info ""
 # =========================
 # Stage 9: Cleanup
 # =========================
-rm -f "$zconfig_dir/EYUSMSSJ.jvmprofile" "$zconfig_dir/EYUCMCIJ.jvmprofile"
+rm -f "$zconfig_dir/EYUSMSSJ.jvmprofile" "$zconfig_dir/EYUCMCIJ.jvmprofile" "$zconfig_dir/zosconn.jvmprofile"
 print_success "CICS Bank of Z setup completed"
  
 exit 0
