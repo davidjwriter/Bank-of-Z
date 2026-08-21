@@ -73,10 +73,7 @@ cics_region:
     xtst: "NO"
     xdct: "NO"
     tcpip: "YES"
-
-  startup_programs:
-    second_phase:
-      - EZACIC20
+    pltpi: "SI"
 
   extensions:
     cics_cmci:

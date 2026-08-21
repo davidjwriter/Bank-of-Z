@@ -210,6 +210,22 @@ run_job_and_wait "/tmp/tcpip-create-$$.jcl" || print_warning "tcpip-create faile
 opercmd "S EQARMTD" 2>/dev/null || true
 set -e
 
+# Assemble and link DFHPLTSI into the app LOADLIB.
+# Required: PLTPI=SI means CICS looks for DFHPLTSI at startup. Without
+# a freshly assembled copy in our LOADLIB, CICS finds a stale module
+# from SDFHLOAD that still references EQA0CPLT (unavailable on this LPAR)
+# and issues DFHSI1579D (reply-required WTOR), then hangs until S222.
+print_info "Assembling DFHPLTSI into ${APP_HLQ}.${APP_ZOS_VERSION}.LOADLIB ..."
+drm "${APP_HLQ}.CICS${APP_SHORT_NAME}.TABLES.SOURCE" 2>/dev/null || true
+python "$SCRIPTS_DIR/../lib/render_template.py" --configFile $CONFIG_FILE \
+    --extraVar "cics_hlq=${APP_HLQ}.CICS${APP_SHORT_NAME}" \
+    --extraVar "cics_system_hlq=${CICS_HLQ}" \
+    --extraVar "app_loadlib=${APP_HLQ}.${APP_ZOS_VERSION}.LOADLIB" \
+    --templateFile "$SCRIPTS_DIR/../jcl/cics/plt-create.j2" \
+    --outputFile "/tmp/plt-create-$$.jcl"
+run_job_and_wait "/tmp/plt-create-$$.jcl"
+print_success "DFHPLTSI assembled successfully"
+
 # ======================================
 # Stage 5: Add CICS region to dtcn.ports
 # ======================================
