@@ -191,6 +191,21 @@ fi
 deactivate
 
 # =========================
+# Stage 3b: Patch JVM profile written by zconfig
+# zconfig 0.7.0 regenerates the JVM profile and puts back
+# -Xshareclasses:name=cicsts.&APPLID;,groupAccess,nonfatal
+# which can cause the JVM server to hang on this LPAR.
+# Replace with -Xshareclasses:none after zconfig completes.
+# =========================
+JVM_PROFILE="$SANDBOX_DIR/CICS${APP_SHORT_NAME}/JVMProfiles/EYUSMSSJ.jvmprofile"
+if [ -f "$JVM_PROFILE" ]; then
+    sed -i 's/-Xshareclasses:name=cicsts.*/-Xshareclasses:none/' "$JVM_PROFILE"
+    print_success "JVM profile patched: -Xshareclasses:none"
+else
+    print_warning "JVM profile not found at $JVM_PROFILE - skipping patch"
+fi
+
+# =========================
 # Stage 4: Create DEBUG Items
 # =========================
 print_stage "Stage 4: Create DEBUG Items (non-fatal)"
