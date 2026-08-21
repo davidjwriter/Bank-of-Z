@@ -193,21 +193,24 @@ fi
 deactivate
 
 # =========================
-# Stage 3b: Patch JVM profile written by zconfig
-# zconfig 0.7.0 regenerates the JVM profile and puts back
+# Stage 3b: Patch ALL JVM profiles written by zconfig
+# zconfig 0.7.0 regenerates JVM profiles and puts back
 # -Xshareclasses:name=cicsts.&APPLID;,groupAccess,nonfatal
-# which can cause the JVM server to hang on this LPAR.
-# Replace with -Xshareclasses:none after zconfig completes.
+# which hangs JVM servers on this LPAR (EYUSMSSJ and EYUCMCIJ).
+# Replace with -Xshareclasses:none in every profile.
 # =========================
-JVM_PROFILE="$SANDBOX_DIR/CICS${APP_SHORT_NAME}/JVMProfiles/EYUSMSSJ.jvmprofile"
-if [ -f "$JVM_PROFILE" ]; then
-    JVM_PROFILE_TMP="${JVM_PROFILE}.tmp$$"
-    sed 's/-Xshareclasses:name=cicsts.*/-Xshareclasses:none/' "$JVM_PROFILE" > "$JVM_PROFILE_TMP" \
-        && mv "$JVM_PROFILE_TMP" "$JVM_PROFILE" \
-        || { rm -f "$JVM_PROFILE_TMP"; print_error "Failed to patch JVM profile"; exit 1; }
-    print_success "JVM profile patched: -Xshareclasses:none"
+JVM_PROFILE_DIR="$SANDBOX_DIR/CICS${APP_SHORT_NAME}/JVMProfiles"
+if [ -d "$JVM_PROFILE_DIR" ]; then
+    for JVM_PROFILE in "$JVM_PROFILE_DIR"/*.jvmprofile; do
+        [ -f "$JVM_PROFILE" ] || continue
+        JVM_PROFILE_TMP="${JVM_PROFILE}.tmp$$"
+        sed 's/-Xshareclasses:name=cicsts.*/-Xshareclasses:none/' "$JVM_PROFILE" > "$JVM_PROFILE_TMP" \
+            && mv "$JVM_PROFILE_TMP" "$JVM_PROFILE" \
+            || { rm -f "$JVM_PROFILE_TMP"; print_error "Failed to patch $JVM_PROFILE"; exit 1; }
+        print_success "JVM profile patched: $(basename "$JVM_PROFILE") -> -Xshareclasses:none"
+    done
 else
-    print_warning "JVM profile not found at $JVM_PROFILE - skipping patch"
+    print_warning "JVM profile directory not found at $JVM_PROFILE_DIR - skipping patch"
 fi
 
 # =========================
