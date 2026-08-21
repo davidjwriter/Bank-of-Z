@@ -81,7 +81,7 @@ fi
 # =========================
 opercmd "C CICS${APP_SHORT_NAME}"  2>/dev/null
 jcan P "${CICS_SYS_PROCLIB}(CICS${APP_SHORT_NAME})" 2>/dev/null || true
-sleep 10
+sleep 10    # brief pause to let region drain before deleting datasets
 drm "${APP_HLQ}.${APP_ZOS_VERSION}.*" 2>/dev/null
 drm "${APP_HLQ}.CICS${APP_SHORT_NAME}.*"  2>/dev/null
 drm "${APP_HLQ}.DBB.*"  2>/dev/null
@@ -190,6 +190,31 @@ fi
 deactivate
 
 # =========================
+# Wait for CMCI to be ready
+# The JVM server (EYUSMSSJ) can take 60-120s to initialise after zconfig starts CICS.
+# =========================
+print_info "Waiting for CMCI to become available on port $CICS_CMCI_PORT ..."
+CMCI_URL="http://127.0.0.1:${CICS_CMCI_PORT}/CICSSystemManagement/CICSProgram/CICS${APP_SHORT_NAME}"
+CMCI_TIMEOUT=180
+CMCI_INTERVAL=10
+CMCI_ELAPSED=0
+until curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$CMCI_URL" | grep -q "^[23]"; do
+    if [ "$CMCI_ELAPSED" -ge "$CMCI_TIMEOUT" ]; then
+        print_error "CMCI did not become available on port $CICS_CMCI_PORT after ${CMCI_TIMEOUT}s."
+        exit 1
+    fi
+    # Fail fast: if the CICS job is no longer running, stop polling immediately
+    if ! jls 2>/dev/null | grep -q "CICS${APP_SHORT_NAME}"; then
+        print_error "CICS${APP_SHORT_NAME} job is no longer active — CICS may have abended."
+        exit 1
+    fi
+    print_info "  CMCI not ready yet, retrying in ${CMCI_INTERVAL}s... (${CMCI_ELAPSED}s elapsed)"
+    sleep "$CMCI_INTERVAL"
+    CMCI_ELAPSED=$((CMCI_ELAPSED + CMCI_INTERVAL))
+done
+print_success "CMCI is ready on port $CICS_CMCI_PORT (${CMCI_ELAPSED}s elapsed)"
+
+# =========================
 # Stage 4: Create DEBUG Items
 # =========================
 print_stage "Stage 4: Create DEBUG Items"
@@ -198,14 +223,16 @@ export LEFT='               APPLID=CICS'
 export SPACES=$((8-${#APP_SHORT_NAME} - 1))
 export MIDDLE=$(printf '%s,%*s' ${APP_SHORT_NAME} $SPACES "")
 
+set +e
 rm -f "/tmp/tcpip-create*"
 python "$SCRIPTS_DIR/../lib/render_template.py" --configFile $CONFIG_FILE \
     --extraVar "cics_hlq=${APP_HLQ}.CICS${APP_SHORT_NAME}" --extraVar "applid_line=${LEFT}${MIDDLE}${RIGHT}" \
     --extraVar "tcpip_hlq=${DEBUG_TCPIP_HQL}" \
     --templateFile "$SCRIPTS_DIR/../jcl/cics/tcpip-create.j2"  --outputFile "/tmp/tcpip-create-$$.jcl"
-run_job_and_wait "/tmp/tcpip-create-$$.jcl"
+run_job_and_wait "/tmp/tcpip-create-$$.jcl" || print_warning "tcpip-create failed (non-fatal, debug only)"
 
-opercmd "S EQARMTD"
+opercmd "S EQARMTD" || print_warning "EQARMTD start failed (non-fatal)"
+set -e
 
 # ======================================
 # Stage 5: Add CICS region to dtcn.ports
