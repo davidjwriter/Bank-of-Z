@@ -196,9 +196,9 @@ fi
 deactivate
 
 # =========================
-# Stage 4: Create DEBUG Items (optional — failures are non-fatal)
+# Stage 4a: Create TCP/IP config (optional — non-fatal)
 # =========================
-print_stage "Stage 4: Create DEBUG Items"
+print_stage "Stage 4: Create TCP/IP and PLT items"
 set +e
 export RIGHT='APPLID of CICS                       X'
 export LEFT='               APPLID=CICS'
@@ -213,13 +213,24 @@ python "$SCRIPTS_DIR/../lib/render_template.py" --configFile $CONFIG_FILE \
     --templateFile "$SCRIPTS_DIR/../jcl/cics/tcpip-create.j2"  --outputFile "/tmp/tcpip-create-$$.jcl"
 run_job_and_wait "/tmp/tcpip-create-$$.jcl" || print_warning "tcpip-create job failed (non-fatal — debug only)"
 
-drm "${APP_HLQ}.CICS${APP_SHORT_NAME}.TABLES.SOURCE" 2> /dev/null || true
-python "$SCRIPTS_DIR/../lib/render_template.py" --configFile $CONFIG_FILE \
-    --extraVar "cics_hlq=${APP_HLQ}.CICS${APP_SHORT_NAME}" --templateFile "$SCRIPTS_DIR/../jcl/cics/plt-create.j2"  --outputFile "/tmp/plt-create-$$.jcl"
-run_job_and_wait "/tmp/plt-create-$$.jcl" || print_warning "plt-create job failed (non-fatal — debug only)"
-
 opercmd "S EQARMTD" 2>/dev/null || true
 set -e
+
+# =========================
+# Stage 4b: Assemble and link DFHPLTSI into BANKZ.CICSBOZ.LOADLIB
+# This is REQUIRED — if PLTPI=SI is set in SIT and the load module
+# is missing or references EQA0CPLT (unavailable), CICS issues
+# DFHSI1579D (a reply-required WTOR) and hangs until S222.
+# =========================
+print_info "Assembling DFHPLTSI PLT table into ${APP_HLQ}.CICS${APP_SHORT_NAME}.LOADLIB ..."
+drm "${APP_HLQ}.CICS${APP_SHORT_NAME}.TABLES.SOURCE" 2> /dev/null || true
+python "$SCRIPTS_DIR/../lib/render_template.py" --configFile $CONFIG_FILE \
+    --extraVar "cics_hlq=${APP_HLQ}.CICS${APP_SHORT_NAME}" \
+    --extraVar "cics_system_hlq=${CICS_HLQ}" \
+    --extraVar "app_loadlib=${APP_HLQ}.${APP_ZOS_VERSION}.LOADLIB" \
+    --templateFile "$SCRIPTS_DIR/../jcl/cics/plt-create.j2" --outputFile "/tmp/plt-create-$$.jcl"
+run_job_and_wait "/tmp/plt-create-$$.jcl"
+print_success "DFHPLTSI assembled and linked successfully"
 
 # ======================================
 # Stage 5: Add CICS region to dtcn.ports

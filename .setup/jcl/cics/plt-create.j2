@@ -23,12 +23,36 @@
 *------------------------------------------------------------------
          DFHPLT TYPE=ENTRY,PROGRAM=DFHDELIM
          DFHPLT TYPE=ENTRY,PROGRAM=EZACIC20
-         DFHPLT TYPE=ENTRY,PROGRAM=EQA0CPLT
+*  EQA0CPLT removed: EQAW.SEQAMOD not allocatable on this LPAR
 *------------------------------------------------------------------
          DFHPLT TYPE=FINAL
          END   DFHPLTBA
 /*
 //SYSUT2   DD DSN={{ cics_hlq }}.TABLES.SOURCE(DFHPLTSI),
 //         DISP=SHR
+//*-------------------------------------------------------------------
+//* ASSEMBLE AND LINK DFHPLTSI INTO BANKZ.CICSBOZ.LOADLIB
+//* This ensures CICS finds our clean PLT module — not a stale
+//* copy from SDFHLOAD — and avoids DFHSI1579D WTOR on startup.
+//*-------------------------------------------------------------------
+//ASM      EXEC PGM=ASMA90,PARM='OBJECT,NODECK',REGION=1024K
+//SYSLIB   DD DISP=SHR,DSN={{ cics_system_hlq }}.CICS.SDFHMAC
+//         DD DISP=SHR,DSN=SYS1.MACLIB
+//SYSUT1   DD UNIT=SYSDA,SPACE=(CYL,(1,1))
+//SYSUT2   DD UNIT=SYSDA,SPACE=(CYL,(1,1))
+//SYSUT3   DD UNIT=SYSDA,SPACE=(CYL,(1,1))
+//SYSLIN   DD DSN=&&PLTOBJ,DISP=(MOD,PASS),UNIT=SYSDA,
+//            SPACE=(400,(100,10)),
+//            DCB=(RECFM=FB,BLKSIZE=400,LRECL=80)
+//SYSPRINT DD SYSOUT=*
+//SYSIN    DD DSN={{ cics_hlq }}.TABLES.SOURCE(DFHPLTSI),
+//         DISP=SHR
+//*
+//LINK     EXEC PGM=IEWL,PARM='LIST,MAP,XREF,AMODE=31,RMODE=ANY',
+//            REGION=512K,COND=(4,LT,ASM)
+//SYSPRINT DD SYSOUT=*
+//SYSUT1   DD SPACE=(CYL,(1,1)),DISP=(NEW,PASS),UNIT=SYSDA
+//SYSLMOD  DD DSN={{ app_loadlib }}(DFHPLTSI),DISP=SHR
+//SYSLIN   DD DSN=&&PLTOBJ,DISP=(OLD,DELETE)
 //*-------------------------------------------------------------------
 //* Made with Bob
