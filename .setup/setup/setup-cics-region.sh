@@ -85,6 +85,8 @@ sleep 10
 drm "${APP_HLQ}.${APP_ZOS_VERSION}.*" 2>/dev/null
 drm "${APP_HLQ}.CICS${APP_SHORT_NAME}.*"  2>/dev/null
 drm "${APP_HLQ}.DBB.*"  2>/dev/null
+# Explicitly delete the PLT table dataset so a stale copy cannot survive cleanup
+drm "${APP_HLQ}.CICS${APP_SHORT_NAME}.DFHTABLE" 2>/dev/null || true
 sleep 5
 rm -rf "$SCRIPTS_DIR/logs"
 rm -rf "$SANDBOX_DIR/CICS${APP_SHORT_NAME}"

@@ -70,6 +70,8 @@ cics_region:
     xtst: "NO"
     xdct: "NO"
     tcpip: "YES"
+    pltpi: "NO"
+    pltsd: "NO"
 
   extensions:
     cics_cmci:
