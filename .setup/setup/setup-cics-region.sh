@@ -100,6 +100,7 @@ print_stage "STAGE 1: Create JVM profile file"
 
 zconfig_dir="$SCRIPTS_DIR/../zconfig"
 
+# EYUSMSSJ — CICS SMSS JVM server (CMCI provider)
 cat > "$zconfig_dir/EYUSMSSJ.jvmprofile" <<EOF
 JAVA_HOME=$JAVA_HOME
 WORK_DIR=$SANDBOX_DIR
@@ -119,7 +120,47 @@ _BPXK_DISABLE_SHLIB=YES
 -Dcom.ibm.tools.attach.enable=no
 EOF
 
-print_success "JVM profile file created successfully!"
+# EYUCMCIJ — CMCI REST API JVM server
+cat > "$zconfig_dir/EYUCMCIJ.jvmprofile" <<EOF
+JAVA_HOME=$JAVA_HOME
+WORK_DIR=$SANDBOX_DIR
+-Xms128M
+-Xmx1G
+-Xmso1M
+-Dfile.encoding=ISO-8859-1
+WLP_INSTALL_DIR=${CICS_USS_DIR}/wlp
+STDOUT=//DD:JVMOUT
+STDERR=//DD:JVMERR
+JVMTRACE=//DD:JVMTRACE
+JVMLOG=//DD:JVMLOG
+-Xgcpolicy:gencon
+-Xscmx128M
+-Xshareclasses:name=cicsts.&APPLID;,groupAccess,nonfatal
+_BPXK_DISABLE_SHLIB=YES
+-Dcom.ibm.tools.attach.enable=no
+EOF
+
+# zosconn — z/OS Connect JVM server
+cat > "$zconfig_dir/zosconn.jvmprofile" <<EOF
+JAVA_HOME=$JAVA_HOME
+WORK_DIR=$SANDBOX_DIR
+-Xms128M
+-Xmx1G
+-Xmso1M
+-Dfile.encoding=ISO-8859-1
+WLP_INSTALL_DIR=${ZOSCONNECT_HOME}/v3r0/wlp
+STDOUT=//DD:JVMOUT
+STDERR=//DD:JVMERR
+JVMTRACE=//DD:JVMTRACE
+JVMLOG=//DD:JVMLOG
+-Xgcpolicy:gencon
+-Xscmx128M
+-Xshareclasses:name=cicsts.&APPLID;,groupAccess,nonfatal
+_BPXK_DISABLE_SHLIB=YES
+-Dcom.ibm.tools.attach.enable=no
+EOF
+
+print_success "JVM profile files created successfully (EYUSMSSJ, EYUCMCIJ, zosconn)!"
 
 # =============================================
 # Stage 2: Create CICS resource overrides file
