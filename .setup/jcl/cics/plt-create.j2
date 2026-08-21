@@ -31,9 +31,9 @@
 //SYSUT2   DD DSN={{ cics_hlq }}.TABLES.SOURCE(DFHPLTSI),
 //         DISP=SHR
 //*-------------------------------------------------------------------
-//* ASSEMBLE AND LINK DFHPLTSI INTO BANKZ.CICSBOZ.LOADLIB
-//* This ensures CICS finds our clean PLT module — not a stale
-//* copy from SDFHLOAD — and avoids DFHSI1579D WTOR on startup.
+//* ASSEMBLE AND LINK DFHPLTSI INTO APP LOADLIB
+//* Ensures CICS finds our clean PLT module, not a stale copy from
+//* SDFHLOAD, and avoids DFHSI1579D WTOR on startup.
 //*-------------------------------------------------------------------
 //ASM      EXEC PGM=ASMA90,PARM='OBJECT,NODECK',REGION=1024K
 //SYSLIB   DD DISP=SHR,DSN={{ cics_system_hlq }}.CICS.SDFHMAC

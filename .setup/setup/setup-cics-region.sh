@@ -196,7 +196,7 @@ fi
 deactivate
 
 # =========================
-# Stage 4a: Create TCP/IP config (optional — non-fatal)
+# Stage 4a: Create TCP/IP config (optional, non-fatal)
 # =========================
 print_stage "Stage 4: Create TCP/IP and PLT items"
 set +e
@@ -211,14 +211,14 @@ python "$SCRIPTS_DIR/../lib/render_template.py" --configFile $CONFIG_FILE \
     --extraVar "cics_hlq=${APP_HLQ}.CICS${APP_SHORT_NAME}" --extraVar "applid_line=${LEFT}${MIDDLE}${RIGHT}" \
     --extraVar "tcpip_hlq=${DEBUG_TCPIP_HQL}" \
     --templateFile "$SCRIPTS_DIR/../jcl/cics/tcpip-create.j2"  --outputFile "/tmp/tcpip-create-$$.jcl"
-run_job_and_wait "/tmp/tcpip-create-$$.jcl" || print_warning "tcpip-create job failed (non-fatal — debug only)"
+run_job_and_wait "/tmp/tcpip-create-$$.jcl" || print_warning "tcpip-create job failed (non-fatal, debug only)"
 
 opercmd "S EQARMTD" 2>/dev/null || true
 set -e
 
 # =========================
-# Stage 4b: Assemble and link DFHPLTSI into BANKZ.CICSBOZ.LOADLIB
-# This is REQUIRED — if PLTPI=SI is set in SIT and the load module
+# Stage 4b: Assemble and link DFHPLTSI into the app LOADLIB.
+# This is REQUIRED. If PLTPI=SI is set in SIT and the load module
 # is missing or references EQA0CPLT (unavailable), CICS issues
 # DFHSI1579D (a reply-required WTOR) and hangs until S222.
 # =========================
@@ -366,7 +366,7 @@ INSTALL_RC=$(curl -s -o /tmp/csd-install-$$.xml -w "%{http_code}" \
 if echo "$INSTALL_RC" | grep -q "^[23]"; then
     print_success "CSD group BANKZGRP installed successfully"
 else
-    print_warning "CSD group install returned HTTP $INSTALL_RC — programs may need manual CEDA INSTALL"
+    print_warning "CSD group install returned HTTP $INSTALL_RC - programs may need manual CEDA INSTALL"
     cat /tmp/csd-install-$$.xml 2>/dev/null || true
 fi
 rm -f /tmp/csd-install-$$.xml
