@@ -330,13 +330,19 @@ print_info "CICS Region Job Started"
 # Wait for CMCI to be ready - the JVM server (EYUSMSSJ) can take 60-120s
 print_info "Waiting for CMCI to become available on port $CICS_CMCI_PORT ..."
 CMCI_URL="http://127.0.0.1:${CICS_CMCI_PORT}/CICSSystemManagement/CICSProgram/CICS${APP_SHORT_NAME}"
-CMCI_TIMEOUT=300
+CMCI_TIMEOUT=180
 CMCI_INTERVAL=10
 CMCI_ELAPSED=0
 until curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$CMCI_URL" | grep -q "^[23]"; do
     if [ "$CMCI_ELAPSED" -ge "$CMCI_TIMEOUT" ]; then
         print_error "CMCI did not become available on port $CICS_CMCI_PORT after ${CMCI_TIMEOUT}s."
         print_error "Check that CICS${APP_SHORT_NAME} started and JVM server EYUSMSSJ is ENABLED."
+        exit 1
+    fi
+    # Fail fast: if the CICS job is no longer running, stop polling immediately
+    if ! jls 2>/dev/null | grep -q "CICS${APP_SHORT_NAME}.*AC"; then
+        print_error "CICS${APP_SHORT_NAME} job is no longer active — it has abended or terminated."
+        print_error "Check: pjdd \$(jls | grep CICS${APP_SHORT_NAME} | awk '{print \$3}' | head -1) JESYSMSG"
         exit 1
     fi
     print_info "  CMCI not ready yet, retrying in ${CMCI_INTERVAL}s... (${CMCI_ELAPSED}s elapsed)"
