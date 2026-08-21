@@ -114,7 +114,7 @@ JVMTRACE=//DD:JVMTRACE
 JVMLOG=//DD:JVMLOG
 -Xgcpolicy:gencon
 -Xscmx128M
--Xshareclasses:name=cicsts.&APPLID;,groupAccess,nonfatal
+-Xshareclasses:none
 _BPXK_DISABLE_SHLIB=YES
 -Dcom.ibm.tools.attach.enable=no
 EOF
@@ -325,7 +325,7 @@ print_info "CICS Region Job Started"
 # =========================
 print_info "Waiting for CMCI to become available on port $CICS_CMCI_PORT ..."
 CMCI_URL="http://127.0.0.1:${CICS_CMCI_PORT}/CICSSystemManagement/CICSProgram/CICS${APP_SHORT_NAME}"
-CMCI_TIMEOUT=180
+CMCI_TIMEOUT=300
 CMCI_INTERVAL=10
 CMCI_ELAPSED=0
 until curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$CMCI_URL" | grep -q "^[23]"; do
