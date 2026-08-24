@@ -68,7 +68,7 @@ global:
   ims_java_home: "/usr/lpp/ims/ims15/imsjava"
   ims_java_dir: "/usr/lpp/ims/ims15/imsjava"
   ims_datastore: "IMSO"
-  ims_dfsplex: "PLEX1"
+  ims_dfsplex: "PLEX2"
   ims_ixvolser: "TMVS5A"      # CONFIRM with sysadmin: volume serial for IMS datasets
 
   # DB2
