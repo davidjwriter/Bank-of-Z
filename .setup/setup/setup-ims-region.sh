@@ -122,6 +122,27 @@ fi
 deactivate
 
 # =========================
+# Copy IMS procs to USER.PROCLIB
+# zconfig writes procs to BANKZ.IMSO.PROCLIB but cannot write to SYS1.PROCLIB.
+# MVS START commands search the system PROCLIB concatenation (which includes
+# USER.PROCLIB), so copy each proc there to ensure they can be found.
+# =========================
+IMS_SYS_PROCLIB="${CICS_SYS_PROCLIB}"
+print_stage "STAGE 1b: Copy IMS procs to ${IMS_SYS_PROCLIB}"
+for member in IMSOSCI IMSOOM IMSORM IMSOODB IMSOCTL IMSOHWS IMSODLI IMSODRC; do
+    if dcp "${IMS_APP_HLQ}.PROCLIB(${member})" "/tmp/${member}-$$.jcl" 2>/dev/null; then
+        if dcp "/tmp/${member}-$$.jcl" "${IMS_SYS_PROCLIB}(${member})"; then
+            print_success "Copied ${member} to ${IMS_SYS_PROCLIB}"
+        else
+            print_warning "Failed to copy ${member} to ${IMS_SYS_PROCLIB}"
+        fi
+        rm -f "/tmp/${member}-$$.jcl"
+    else
+        print_warning "Source member ${IMS_APP_HLQ}.PROCLIB(${member}) not found, skipping"
+    fi
+done
+
+# =========================
 # Stage 2: Verify IMS region
 # =========================
 print_stage "STAGE 2: Verify IMS region"
