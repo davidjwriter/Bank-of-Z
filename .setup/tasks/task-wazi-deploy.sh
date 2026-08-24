@@ -213,6 +213,7 @@ CMD="wazideploy-deploy \
  -e deploy_cfg_home=$DEPLOY_ZDEPLOY_FOLDER \
  -e zos_connect_root=$ZOSCONNECT_SERVER_FOLDER \
  -e sandbox_path=$SANDBOX_DIR \
+ -e db2_system.sdsnload=${DB2_SDSNLOAD_HLQ}.SDSNLOAD \
  $CICS_CREDS \
  --packageInputFile $PACKAGE_URL \
  --evidencesFileName ${evidenceDir}/evidence-bankz.yaml $@"
