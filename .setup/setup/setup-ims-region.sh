@@ -100,7 +100,7 @@ zconfig apply -e ims_user="${IMS_USER}" -e ims_user_lower="${IMS_USER_LOWER}"\
               -e imsid="${IMS_DATASTORE}" -e ims_hlq="${IMS_APP_HLQ}" \
               -e ims_plex="${IMS_PLEX}" \
               -e ims_sys_hlq="${IMS_SYS_HLQ}" \
-              -e db2_hlq="${DB2_HLQ}" \
+              -e db2_hlq="${DB2_SDSNLOAD_HLQ}" \
               -e java_home="${JAVA_HOME}" \
               -e db2_java_dir="${DB2_JAVA_FOLDER}" \
               -e ims_java_dir="${IMS_JAVA_FOLDER}" \

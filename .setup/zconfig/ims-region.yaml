@@ -5,7 +5,7 @@ vars:
   ims_hlq: BANKZ.IMS2
   ims_sys_hlq: IMSV15
   ims_plex: PLEX2
-  db2_hlq: DB2V13
+  db2_hlq: DSN.V13R1M0
   db2_ssid: DBD1
   ims_java_home: "/usr/local/sandboxes/tools/J21.0_64"
   ims_java_dir: "/usr/lpp/ims/imsjava"
