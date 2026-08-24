@@ -12,7 +12,7 @@ vars:
   db2_java_dir: "/usr/lpp/db2d10"
   ims_target_user: IBMUSER
   ims_ixvolser: "IMSV15"
-  debug_hlq: EQAW
+  debug_hlq: ""
 ims:
   ims_id: "{{ vars.imsid }}"
   ims_sys_hlq: "{{ vars.ims_sys_hlq }}"
