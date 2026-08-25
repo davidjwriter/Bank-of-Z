@@ -1,6 +1,6 @@
 # TIVMVS5 Bank of Z Deployment — Ongoing Context
 
-> Last updated: 2026-08-25 (late)
+> Last updated: 2026-08-25 (night)
 > Branch: `tivmvs5` on `git@github.com:davidjwriter/Bank-of-Z.git`  
 > Upstream: `https://github.com/IBM/Bank-of-Z.git`
 
@@ -44,10 +44,12 @@
 | `ims_ixvolser` | `TMVS5A` | DASD volume for IMS datasets |
 | `db2_hlq` | `DSN131` | DB2 13 instance HLQ (runtime, RUNLIB, etc.) |
 | `db2_sdsnload_hlq` | `DSN.V13R1M0` | DB2 **library** HLQ — SDSNLOAD/SDSNEXIT/SDSNLOD2 live here, NOT under `DSN131` |
+| `zosconnect_https_port` | `9448` | Changed from 9443 — taken by MortgageApp (BAQMRT STC05941) |
+| `zosconnect_http_port` | `9447` | Changed from 9080 — taken by MortgageApp (BAQMRT STC05941) |
+| `frontend_https_port` | `9446` | Changed from 9444 — taken by MortgageApp (FEMRT JOB05938) |
+| `frontend_http_port` | `9445` | Changed from 9081 — taken by MortgageApp (FEMRT JOB05938) |
 | `db2_runlib` | `DSN131.RUNLIB.LOAD` | |
 | `db2_ssid` | `DBD1` | |
-| `zosconnect_https_port` | `9443` | |
-| `frontend_https_port` | `9444` | |
 
 ---
 
@@ -83,7 +85,22 @@ Any tool or script that tries to allocate `DSN131.SDSNLOAD` will fail with datas
 - `.setup/deploy/Development.yml` — `default_db2_sdsnload` was `{{ db2.db2_hlq }}.SDSNLOAD` (= `DSN131.SDSNLOAD`); fixed to `{{ db2.sdsnload }}` (= `DSN.V13R1M0.SDSNLOAD`)
 - Wazi Deploy `db2_config.yml` on LPAR — must be patched manually (see below)
 
-### 3. DB2 buffer pool — BP0 only, BP1 not activated
+### 3. Port conflicts — MortgageApplication already owns 9080/9081/9443/9444
+A pre-existing MortgageApplication deployment holds:
+- `BAQMRT` (STC05941, SYSADM) → ports 9080/9443 (z/OS Connect)
+- `FEMRT` (JOB05938, MEYER) → ports 9081/9444 (frontend Liberty)
+
+Bank of Z uses different ports to avoid collision:
+| Server | HTTP | HTTPS |
+|---|---|---|
+| z/OS Connect (`BAQBOZ`) | 9447 | 9448 |
+| Frontend (`FEBOZ`) | 9445 | 9446 |
+
+These are set in [`config.yaml`](.setup/config/config.yaml) global section.
+When FEBOZ/BAQBOZ fail to start silently, **port conflict is the first thing to check**.
+After a port change, the stale `.env` cache must be cleared and server setup re-run.
+
+### 4. DB2 buffer pool — BP0 only, BP1 not activated
 `CREATE DATABASE` JCL templates default to `BUFFERPOOL BP1` in upstream. BP1 is not activated on TIVMVS5.
 
 **Fix:** Use `BUFFERPOOL BP0` in:
@@ -109,7 +126,18 @@ for member in IMSOSCI IMSOOM IMSORM IMSOODB IMSOCTL IMSOHWS IMSODLI IMSODRC; do
 done
 ```
 
-### 6. EQAW debugger — not installed for IMS, installed for CICS
+### 6. IMS ACBGEN requires live IMSOCTL — not just dataset existence
+The `ims_acb_gen` Wazi Deploy building block uses the IMS runtime (DFSRRC00 in `BANKZ.IMSO.SDFSRESL`) to build ACBs. It fails RC=8 if IMSOCTL is not actively running, even if the datasets exist.
+
+IMSOCTL (JOB06882) IS running as of 2026-08-25. The ACBGEN RC=8 during the last deploy run was because the deploy ran *before* IMSOCTL finished initializing. Re-running deploy with IMSOCTL AC should resolve it.
+
+**To verify IMSOCTL is running before deploying:**
+```bash
+jls | grep IMSOCTL   # must show AC
+opercmd "D XCF,GROUP,CSLPLEX2"  # must show IMSO member
+```
+
+### 7. EQAW debugger — not installed for IMS, installed for CICS
 `debug_hlq: EQAW` in `config.yaml` is correct for CICS (the value is passed on the CLI but never consumed by `cics-region.yaml`).
 
 For IMS, `debug_hlq` is a first-class field that triggers `ImsDebugLinkEdit` (assembles EQAOPTS from `EQAW.SEQAMOD`). `EQAW.SEQAMOD` does not exist under the IMS context.
@@ -118,7 +146,7 @@ For IMS, `debug_hlq` is a first-class field that triggers `ImsDebugLinkEdit` (as
 
 Note: `zconfig` rejects `-e key=` (empty value) — omit the argument entirely.
 
-### 7. RACF surrogate submit — MEYER cannot submit jobs as SYSADM by default
+### 9. Wazi Deploy db2_config.yml — must be patched on LPAR
 zconfig generates `IMSOCTL` JCL with `USER=SYSADM`. Submitting from MEYER hits:
 ```
 ICH408I SUBMITTER IS NOT AUTHORIZED BY USER
@@ -134,7 +162,7 @@ This is a one-time LPAR setup — once done it persists.
 
 **Do not run setup scripts as SYSADM directly** — SYSADM has superuser authority that can bypass read-only filesystem protections, and zconfig's `rm` cleanup can delete system files (this wiped `/etc/ssh` once, forcing SSH host key regeneration).
 
-### 8. Wazi Deploy db2_config.yml — must be patched on LPAR
+### 8. RACF surrogate submit — MEYER cannot submit jobs as SYSADM by default
 Wazi Deploy reads `sdsnload` from its own config file. The `-e key=value` CLI override does not support nested dot-notation keys in this version. The file must be patched directly:
 ```bash
 sed -i 's|DSN131\.SDSNLOAD|DSN.V13R1M0.SDSNLOAD|g' \
@@ -235,52 +263,44 @@ ssh meyer@tivmvs5.pok.stglabs.ibm.com   # accept new fingerprint
 | CICS (CICSBOZ) | ✅ Running | CMCI on port 27100 |
 | DB2 tables | ✅ Created | BANKZ and IMSBANK databases, populated CC=0000 |
 | IMS SCI/OM/RM | ✅ Running | CSLPLEX2 XCF group active |
-| IMS CTL (IMSOCTL) | ⚠️ Unknown | setup-remote ran full IMS setup; ACBGEN still RC=8 — need to verify IMSOCTL is actually up |
-| IMS databases | ✅ Populated | LOADACCT/LOADCUST/LOADCUSA/LOADHIST/LOADTSTA all CC=0000 (batch DL/I, no IMS CTL needed) |
+| IMS CTL (IMSOCTL) | ✅ Running | JOB06882 AC — CSLPLEX2 group active with IMSO member |
+| IMS databases | ✅ Populated | LOADACCT/LOADCUST/LOADCUSA/LOADHIST/LOADTSTA all CC=0000 |
 | DBB Build | ✅ Passing | Full build clean |
 | Wazi Deploy (CICS/DB2) | ✅ Complete | DB2 bind CC=0000, all 40 CICS NEWCOPYs done, WARs deployed |
-| Wazi Deploy (IMS ACBGEN) | ❌ Blocked | RC=8 — IMSOCTL must be confirmed running before re-running |
-| IMS RECON | ✅ Done | JOB06925 CC=0012 (expected — delete of non-existent), JOB06926 CC=0000 |
-| z/OS Connect (BAQBOZ) | ⚠️ Unknown | `S BAQBOZ` issued; Liberty needs ~60s to start; verify with `jls \| grep BAQBOZ` |
-| Frontend (FEBOZ) | ⚠️ Unknown | `S FEBOZ` issued; Liberty needs ~60s to start; verify with `jls \| grep FEBOZ` |
+| Wazi Deploy (IMS ACBGEN) | ⏳ Pending | IMSOCTL now confirmed running; re-run deploy to complete ACBGEN |
+| IMS RECON | ✅ Done | JOB06925 CC=0012 (expected), JOB06926 CC=0000 |
+| z/OS Connect (BAQBOZ) | ❌ Failed to start | Port conflict — 9443/9080 taken by BAQMRT; ports changed to 9448/9447 in config.yaml |
+| Frontend (FEBOZ) | ❌ Failed to start | Port conflict — 9444/9081 taken by FEMRT; ports changed to 9446/9445 in config.yaml |
 
 ---
 
 ## Next Steps
 
-1. **Verify current state** — run these on TIVMVS5:
+1. **Push + force-update `config.yaml`** (port change is already committed):
    ```bash
-   # Are the Liberty servers running?
-   jls | grep -E "FEBOZ|BAQBOZ|IMSO"
-
-   # Is IMS CTL actually up?
-   opercmd "D XCF,GROUP,CSLPLEX2"
-
-   # Can you hit the frontend?
-   curl -sk -o /dev/null -w "%{http_code}" https://127.0.0.1:9444/
-
-   # Liberty "server ready" messages
-   pjdd $(jls | grep BAQBOZ | awk '{print $1}') STDOUT
-   pjdd $(jls | grep FEBOZ  | awk '{print $1}') STDOUT
+   git show tivmvs5:.setup/config/config.yaml > .setup/config/config.yaml
+   rm -f .setup/config/.env && exec bash -l
+   source .setup/config/setenv.sh
    ```
 
-2. **If IMSOCTL is not shown in `jls`**, it didn't start. Check its job log:
+2. **Re-run z/OS Connect and frontend server setup** (picks up new ports, recreates procs):
    ```bash
-   jls | grep IMSOCTL
-   pjdd <JOBID> JESYSMSG
+   .setup/setup/setup-zosconnect-server.sh
+   .setup/setup/setup-frontend-server.sh
    ```
 
-3. **Once IMSOCTL is confirmed running**, re-run just the deploy (no rebuild needed if package exists):
+3. **Re-run Wazi Deploy** (IMSOCTL is now running — ACBGEN should pass):
    ```bash
    source .setup/config/setenv.sh
-   # Check if a package exists, or rebuild first
    ls /usr/local/sandboxes/bank-of-z/logs/dbb/BANKZ-*.tar 2>/dev/null || .setup/tasks/task-dbb-build.sh
    .setup/tasks/task-wazi-deploy.sh
    ```
 
-4. **ACBGEN quirk**: the `ims_acb_gen` Wazi Deploy building block requires a **live IMS** because
-   it uses the IMS-provided DFSRRC00 runtime. Even if `BANKZ.IMSO.SDFSRESL` exists, if IMSOCTL
-   isn't running the ACB gen will fail RC=8. Confirm with `opercmd "D XCF,GROUP,CSLPLEX2"` first.
+4. **Verify** servers are up and frontend is accessible:
+   ```bash
+   jls | grep -E "FEBOZ|BAQBOZ"
+   curl -sk -o /dev/null -w "%{http_code}" https://127.0.0.1:9446/
+   ```
 
 ---
 
@@ -296,6 +316,7 @@ ssh meyer@tivmvs5.pok.stglabs.ibm.com   # accept new fingerprint
 | `.setup/setup/setup-ims-region.sh` | Drop `debug_hlq` from zconfig apply args; copy procs to USER.PROCLIB; use `DB2_SDSNLOAD_HLQ` for db2_hlq |
 | `.setup/tasks/task-wazi-deploy.sh` | CMCI poll before wazideploy fires; temp file fix (`.j2` not `.j2.$$`) |
 | `.setup/deploy/Development.yml` | `default_db2_sdsnload` changed from `{{ db2.db2_hlq }}.SDSNLOAD` to `{{ db2.sdsnload }}` |
+| `.setup/config/config.yaml` | Ports: frontend 9444→9446/9081→9445, z/OS Connect 9443→9448/9080→9447 (avoid MortgageApp conflict) |
 | `.setup/build/datasets.yaml.j2` | `SDSNLOAD`/`SDSNEXIT` use `global.db2_sdsnload_hlq` |
 | `.setup/deploy/cics/Db2-create.j2` | `BUFFERPOOL BP0` |
 | `.setup/deploy/ims/Db2-create.j2` | `BUFFERPOOL BP0` |
