@@ -1,6 +1,6 @@
 # TIVMVS5 Bank of Z Deployment — Ongoing Context
 
-> Last updated: 2026-08-25 (evening)
+> Last updated: 2026-08-25 (late)
 > Branch: `tivmvs5` on `git@github.com:davidjwriter/Bank-of-Z.git`  
 > Upstream: `https://github.com/IBM/Bank-of-Z.git`
 
@@ -232,45 +232,55 @@ ssh meyer@tivmvs5.pok.stglabs.ibm.com   # accept new fingerprint
 
 | Component | Status | Notes |
 |---|---|---|
-| CICS (CICSBOZ) | ✅ Running | `STC06694 AC`, CMCI on port 27100 |
-| DB2 tables | ✅ Created | BANKZ and IMSBANK databases |
+| CICS (CICSBOZ) | ✅ Running | CMCI on port 27100 |
+| DB2 tables | ✅ Created | BANKZ and IMSBANK databases, populated CC=0000 |
 | IMS SCI/OM/RM | ✅ Running | CSLPLEX2 XCF group active |
-| IMS CTL (IMSOCTL) | ⏳ Pending | Surrogate permit in place, needs clean re-run — **blocking IMS ACBGEN** |
+| IMS CTL (IMSOCTL) | ⚠️ Unknown | setup-remote ran full IMS setup; ACBGEN still RC=8 — need to verify IMSOCTL is actually up |
+| IMS databases | ✅ Populated | LOADACCT/LOADCUST/LOADCUSA/LOADHIST/LOADTSTA all CC=0000 (batch DL/I, no IMS CTL needed) |
 | DBB Build | ✅ Passing | Full build clean |
 | Wazi Deploy (CICS/DB2) | ✅ Complete | DB2 bind CC=0000, all 40 CICS NEWCOPYs done, WARs deployed |
-| Wazi Deploy (IMS ACBGEN) | ❌ Blocked | RC=8 — `BANKZ.IMSO.SDFSRESL` absent until IMSOCTL runs; re-run deploy after CTL is up |
-| z/OS Connect | ⏳ Not yet attempted | WAR deployed to server dir; needs z/OS Connect started |
-| Frontend | ⏳ Not yet attempted | WAR deployed to frontend dir; needs Liberty server started |
+| Wazi Deploy (IMS ACBGEN) | ❌ Blocked | RC=8 — IMSOCTL must be confirmed running before re-running |
+| IMS RECON | ✅ Done | JOB06925 CC=0012 (expected — delete of non-existent), JOB06926 CC=0000 |
+| z/OS Connect (BAQBOZ) | ⚠️ Unknown | `S BAQBOZ` issued; Liberty needs ~60s to start; verify with `jls \| grep BAQBOZ` |
+| Frontend (FEBOZ) | ⚠️ Unknown | `S FEBOZ` issued; Liberty needs ~60s to start; verify with `jls \| grep FEBOZ` |
 
 ---
 
 ## Next Steps
 
-1. **Verify IMS CTL datasets exist** (diagnose before re-running setup):
+1. **Verify current state** — run these on TIVMVS5:
    ```bash
-   dls BANKZ.IMSO.SDFSRESL
-   dls BANKZ.IMSO.ACBLIBA
-   # If "not found" → IMSOCTL never completed; run step 2
-   # If found → something else caused ACBGEN RC=8; check evidence file
+   # Are the Liberty servers running?
+   jls | grep -E "FEBOZ|BAQBOZ|IMSO"
+
+   # Is IMS CTL actually up?
+   opercmd "D XCF,GROUP,CSLPLEX2"
+
+   # Can you hit the frontend?
+   curl -sk -o /dev/null -w "%{http_code}" https://127.0.0.1:9444/
+
+   # Liberty "server ready" messages
+   pjdd $(jls | grep BAQBOZ | awk '{print $1}') STDOUT
+   pjdd $(jls | grep FEBOZ  | awk '{print $1}') STDOUT
    ```
 
-2. **Get IMSOCTL running** — re-run IMS setup as MEYER (surrogate in place):
+2. **If IMSOCTL is not shown in `jls`**, it didn't start. Check its job log:
    ```bash
-   git show tivmvs5:.setup/setup/setup-ims-region.sh > .setup/setup/setup-ims-region.sh
-   rm -f .setup/config/.env && exec bash -l
-   source .setup/config/setenv.sh
-   .setup/setup/setup-ims-region.sh
+   jls | grep IMSOCTL
+   pjdd <JOBID> JESYSMSG
    ```
 
-3. **Re-run Wazi Deploy** after IMSOCTL is running (triggers ACBGEN + ims_maclib with live IMS):
+3. **Once IMSOCTL is confirmed running**, re-run just the deploy (no rebuild needed if package exists):
    ```bash
-   # First rebuild the package so deploy picks it up (package was renamed to .deployed)
    source .setup/config/setenv.sh
-   .setup/tasks/task-dbb-build.sh
+   # Check if a package exists, or rebuild first
+   ls /usr/local/sandboxes/bank-of-z/logs/dbb/BANKZ-*.tar 2>/dev/null || .setup/tasks/task-dbb-build.sh
    .setup/tasks/task-wazi-deploy.sh
    ```
 
-4. **Continue with z/OS Connect and frontend** via remaining setup scripts.
+4. **ACBGEN quirk**: the `ims_acb_gen` Wazi Deploy building block requires a **live IMS** because
+   it uses the IMS-provided DFSRRC00 runtime. Even if `BANKZ.IMSO.SDFSRESL` exists, if IMSOCTL
+   isn't running the ACB gen will fail RC=8. Confirm with `opercmd "D XCF,GROUP,CSLPLEX2"` first.
 
 ---
 
