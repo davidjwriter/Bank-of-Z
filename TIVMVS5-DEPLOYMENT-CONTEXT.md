@@ -1,6 +1,6 @@
 # TIVMVS5 Bank of Z Deployment — Ongoing Context
 
-> Last updated: 2026-08-24  
+> Last updated: 2026-08-25
 > Branch: `tivmvs5` on `git@github.com:davidjwriter/Bank-of-Z.git`  
 > Upstream: `https://github.com/IBM/Bank-of-Z.git`
 
@@ -80,6 +80,7 @@ Any tool or script that tries to allocate `DSN131.SDSNLOAD` will fail with datas
 - `.setup/zconfig/ims-region.yaml` — `db2_hlq` var set to `DSN.V13R1M0` (zconfig derives SDSNLOD2 from this single field)
 - All 6 DB2 JCL templates under `.setup/deploy/` — use `{{ db2.sdsnload }}` / `{{ db2.sdsnexit }}`
 - `.setup/build/datasets.yaml.j2` — `SDSNLOAD`/`SDSNEXIT` use `{{ global.db2_sdsnload_hlq }}`
+- `.setup/deploy/Development.yml` — `default_db2_sdsnload` was `{{ db2.db2_hlq }}.SDSNLOAD` (= `DSN131.SDSNLOAD`); fixed to `{{ db2.sdsnload }}` (= `DSN.V13R1M0.SDSNLOAD`)
 - Wazi Deploy `db2_config.yml` on LPAR — must be patched manually (see below)
 
 ### 3. DB2 buffer pool — BP0 only, BP1 not activated
@@ -227,7 +228,7 @@ ssh meyer@tivmvs5.pok.stglabs.ibm.com   # accept new fingerprint
 
 ---
 
-## Deployment Status as of 2026-08-24
+## Deployment Status as of 2026-08-25
 
 | Component | Status | Notes |
 |---|---|---|
@@ -236,7 +237,7 @@ ssh meyer@tivmvs5.pok.stglabs.ibm.com   # accept new fingerprint
 | IMS SCI/OM/RM | ✅ Running | CSLPLEX2 XCF group active |
 | IMS CTL (IMSOCTL) | ⏳ Pending | Surrogate permit in place, needs clean re-run |
 | DBB Build | ✅ Passing | Full build clean |
-| Wazi Deploy | ⏳ In progress | Blocked on `DSN131.SDSNLOAD` in db2_config.yml — fix with `sed` on LPAR |
+| Wazi Deploy | ⏳ In progress | `default_db2_sdsnload` in `Development.yml` fixed to `{{ db2.sdsnload }}`; also patch `db2_config.yml` on LPAR with `sed` |
 | z/OS Connect | ⏳ Not yet attempted | |
 | Frontend | ⏳ Not yet attempted | |
 
@@ -244,19 +245,24 @@ ssh meyer@tivmvs5.pok.stglabs.ibm.com   # accept new fingerprint
 
 ## Next Steps
 
-1. **Patch Wazi Deploy db2_config.yml on LPAR** (one-time):
+1. **Force-update `Development.yml` from git** (z/OS file tagging workaround):
+   ```bash
+   git show tivmvs5:.setup/deploy/Development.yml > .setup/deploy/Development.yml
+   ```
+
+2. **Patch Wazi Deploy db2_config.yml on LPAR** (one-time, if not already done):
    ```bash
    sed -i 's|DSN131\.SDSNLOAD|DSN.V13R1M0.SDSNLOAD|g' \
      /usr/local/sandboxes/bank-of-z/dbb/WaziDeploy/zDeploy/deployment-configuration/global/db2_config.yml
    ```
 
-2. **Re-run Wazi Deploy** (no need to rebuild):
+3. **Re-run Wazi Deploy** (no need to rebuild):
    ```bash
    source .setup/config/setenv.sh
    .setup/tasks/task-wazi-deploy.sh
    ```
 
-3. **If IMSOCTL is not running**, re-run IMS setup as MEYER (surrogate now in place):
+4. **If IMSOCTL is not running**, re-run IMS setup as MEYER (surrogate now in place):
    ```bash
    git show tivmvs5:.setup/setup/setup-ims-region.sh > .setup/setup/setup-ims-region.sh
    rm -f .setup/config/.env && exec bash -l
@@ -264,7 +270,7 @@ ssh meyer@tivmvs5.pok.stglabs.ibm.com   # accept new fingerprint
    .setup/setup/setup-ims-region.sh
    ```
 
-4. **Continue with z/OS Connect and frontend** via remaining setup scripts.
+5. **Continue with z/OS Connect and frontend** via remaining setup scripts.
 
 ---
 
@@ -279,6 +285,7 @@ ssh meyer@tivmvs5.pok.stglabs.ibm.com   # accept new fingerprint
 | `.setup/setup/setup-cics-region.sh` | RACF STARTED profile; write CICS proc to USER.PROCLIB; `opercmd "S CICSBOZ"` (Stages 4-6 were missing) |
 | `.setup/setup/setup-ims-region.sh` | Drop `debug_hlq` from zconfig apply args; copy procs to USER.PROCLIB; use `DB2_SDSNLOAD_HLQ` for db2_hlq |
 | `.setup/tasks/task-wazi-deploy.sh` | CMCI poll before wazideploy fires; temp file fix (`.j2` not `.j2.$$`) |
+| `.setup/deploy/Development.yml` | `default_db2_sdsnload` changed from `{{ db2.db2_hlq }}.SDSNLOAD` to `{{ db2.sdsnload }}` |
 | `.setup/build/datasets.yaml.j2` | `SDSNLOAD`/`SDSNEXIT` use `global.db2_sdsnload_hlq` |
 | `.setup/deploy/cics/Db2-create.j2` | `BUFFERPOOL BP0` |
 | `.setup/deploy/ims/Db2-create.j2` | `BUFFERPOOL BP0` |

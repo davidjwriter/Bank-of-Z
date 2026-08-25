@@ -44,7 +44,7 @@ default_cmci_cert: ""
 default_cmci_key: ""
 
 # DB2
-default_db2_sdsnload: "{{ db2.db2_hlq }}.SDSNLOAD"
+default_db2_sdsnload: "{{ db2.sdsnload }}"
 default_pkg_jobcard: "BINDPKG JOB 'WD-PKGBIND',MSGLEVEL=(1,1),MSGCLASS=R,NOTIFY=&SYSUID"
 default_plan_jobcard: "BINDPLA JOB 'WD-PLANBIND',MSGLEVEL=(1,1),MSGCLASS=R,NOTIFY=&SYSUID"
 default_db2_sqlid: "{{ db2.sqlid }}"
