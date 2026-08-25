@@ -1,6 +1,6 @@
 # TIVMVS5 Bank of Z Deployment — Ongoing Context
 
-> Last updated: 2026-08-25
+> Last updated: 2026-08-25 (evening)
 > Branch: `tivmvs5` on `git@github.com:davidjwriter/Bank-of-Z.git`  
 > Upstream: `https://github.com/IBM/Bank-of-Z.git`
 
@@ -235,34 +235,26 @@ ssh meyer@tivmvs5.pok.stglabs.ibm.com   # accept new fingerprint
 | CICS (CICSBOZ) | ✅ Running | `STC06694 AC`, CMCI on port 27100 |
 | DB2 tables | ✅ Created | BANKZ and IMSBANK databases |
 | IMS SCI/OM/RM | ✅ Running | CSLPLEX2 XCF group active |
-| IMS CTL (IMSOCTL) | ⏳ Pending | Surrogate permit in place, needs clean re-run |
+| IMS CTL (IMSOCTL) | ⏳ Pending | Surrogate permit in place, needs clean re-run — **blocking IMS ACBGEN** |
 | DBB Build | ✅ Passing | Full build clean |
-| Wazi Deploy | ⏳ In progress | `default_db2_sdsnload` in `Development.yml` fixed to `{{ db2.sdsnload }}`; also patch `db2_config.yml` on LPAR with `sed` |
-| z/OS Connect | ⏳ Not yet attempted | |
-| Frontend | ⏳ Not yet attempted | |
+| Wazi Deploy (CICS/DB2) | ✅ Complete | DB2 bind CC=0000, all 40 CICS NEWCOPYs done, WARs deployed |
+| Wazi Deploy (IMS ACBGEN) | ❌ Blocked | RC=8 — `BANKZ.IMSO.SDFSRESL` absent until IMSOCTL runs; re-run deploy after CTL is up |
+| z/OS Connect | ⏳ Not yet attempted | WAR deployed to server dir; needs z/OS Connect started |
+| Frontend | ⏳ Not yet attempted | WAR deployed to frontend dir; needs Liberty server started |
 
 ---
 
 ## Next Steps
 
-1. **Force-update `Development.yml` from git** (z/OS file tagging workaround):
+1. **Verify IMS CTL datasets exist** (diagnose before re-running setup):
    ```bash
-   git show tivmvs5:.setup/deploy/Development.yml > .setup/deploy/Development.yml
+   dls BANKZ.IMSO.SDFSRESL
+   dls BANKZ.IMSO.ACBLIBA
+   # If "not found" → IMSOCTL never completed; run step 2
+   # If found → something else caused ACBGEN RC=8; check evidence file
    ```
 
-2. **Patch Wazi Deploy db2_config.yml on LPAR** (one-time, if not already done):
-   ```bash
-   sed -i 's|DSN131\.SDSNLOAD|DSN.V13R1M0.SDSNLOAD|g' \
-     /usr/local/sandboxes/bank-of-z/dbb/WaziDeploy/zDeploy/deployment-configuration/global/db2_config.yml
-   ```
-
-3. **Re-run Wazi Deploy** (no need to rebuild):
-   ```bash
-   source .setup/config/setenv.sh
-   .setup/tasks/task-wazi-deploy.sh
-   ```
-
-4. **If IMSOCTL is not running**, re-run IMS setup as MEYER (surrogate now in place):
+2. **Get IMSOCTL running** — re-run IMS setup as MEYER (surrogate in place):
    ```bash
    git show tivmvs5:.setup/setup/setup-ims-region.sh > .setup/setup/setup-ims-region.sh
    rm -f .setup/config/.env && exec bash -l
@@ -270,7 +262,15 @@ ssh meyer@tivmvs5.pok.stglabs.ibm.com   # accept new fingerprint
    .setup/setup/setup-ims-region.sh
    ```
 
-5. **Continue with z/OS Connect and frontend** via remaining setup scripts.
+3. **Re-run Wazi Deploy** after IMSOCTL is running (triggers ACBGEN + ims_maclib with live IMS):
+   ```bash
+   # First rebuild the package so deploy picks it up (package was renamed to .deployed)
+   source .setup/config/setenv.sh
+   .setup/tasks/task-dbb-build.sh
+   .setup/tasks/task-wazi-deploy.sh
+   ```
+
+4. **Continue with z/OS Connect and frontend** via remaining setup scripts.
 
 ---
 
