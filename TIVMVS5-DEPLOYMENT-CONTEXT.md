@@ -1,6 +1,6 @@
 # TIVMVS5 Bank of Z Deployment — Ongoing Context
 
-> Last updated: 2026-08-25 (night)
+> Last updated: 2026-08-26
 > Branch: `tivmvs5` on `git@github.com:davidjwriter/Bank-of-Z.git`  
 > Upstream: `https://github.com/IBM/Bank-of-Z.git`
 
@@ -267,40 +267,42 @@ ssh meyer@tivmvs5.pok.stglabs.ibm.com   # accept new fingerprint
 | IMS databases | ✅ Populated | LOADACCT/LOADCUST/LOADCUSA/LOADHIST/LOADTSTA all CC=0000 |
 | DBB Build | ✅ Passing | Full build clean |
 | Wazi Deploy (CICS/DB2) | ✅ Complete | DB2 bind CC=0000, all 40 CICS NEWCOPYs done, WARs deployed |
-| Wazi Deploy (IMS ACBGEN) | ⏳ Pending | IMSOCTL now confirmed running; re-run deploy to complete ACBGEN |
+| Wazi Deploy (IMS ACBGEN) | ✅ Complete | Passed silently (no RC=8) with IMSOCTL running |
+| Wazi Deploy (IMS MACLIB) | ⚠️ CC=0008 | JOB06932 CC=0008 — `ims_maclib.jcl.j2` CSLUSPOC steps failing; needs investigation |
 | IMS RECON | ✅ Done | JOB06925 CC=0012 (expected), JOB06926 CC=0000 |
-| z/OS Connect (BAQBOZ) | ❌ Failed to start | Port conflict — 9443/9080 taken by BAQMRT; ports changed to 9448/9447 in config.yaml |
-| Frontend (FEBOZ) | ❌ Failed to start | Port conflict — 9444/9081 taken by FEMRT; ports changed to 9446/9445 in config.yaml |
+| z/OS Connect (BAQBOZ) | ❌ CC=0255 | Server setup scripts not re-run after port change; `USER.PROCLIB` proc still has old ports |
+| Frontend (FEBOZ) | ❌ CC=0255 | Same — needs `setup-zosconnect-server.sh` and `setup-frontend-server.sh` re-run |
 
 ---
 
 ## Next Steps
 
-1. **Push + force-update `config.yaml`** (port change is already committed):
+1. **Force-update config.yaml and re-run server setup** (port change in git, procs not yet updated):
    ```bash
    git show tivmvs5:.setup/config/config.yaml > .setup/config/config.yaml
    rm -f .setup/config/.env && exec bash -l
    source .setup/config/setenv.sh
-   ```
-
-2. **Re-run z/OS Connect and frontend server setup** (picks up new ports, recreates procs):
-   ```bash
+   # Verify: echo "Frontend: $FRONTEND_HTTPS_PORT  zOSConnect: $ZOSCONNECT_HTTPS_PORT"
+   # Should print 9446 and 9448
    .setup/setup/setup-zosconnect-server.sh
    .setup/setup/setup-frontend-server.sh
    ```
 
-3. **Re-run Wazi Deploy** (IMSOCTL is now running — ACBGEN should pass):
+2. **Wait ~60s for Liberty JVM startup**, then verify:
    ```bash
-   source .setup/config/setenv.sh
-   ls /usr/local/sandboxes/bank-of-z/logs/dbb/BANKZ-*.tar 2>/dev/null || .setup/tasks/task-dbb-build.sh
-   .setup/tasks/task-wazi-deploy.sh
-   ```
-
-4. **Verify** servers are up and frontend is accessible:
-   ```bash
-   jls | grep -E "FEBOZ|BAQBOZ"
+   jls | grep -E "FEBOZ|BAQBOZ"   # must show AC
    curl -sk -o /dev/null -w "%{http_code}" https://127.0.0.1:9446/
    ```
+
+3. **Investigate ims_maclib CC=0008** — look at the CSLUSPOC output:
+   ```bash
+   pjdd JOB06932 SYSPRINT
+   # Or check all DDs:
+   ddls JOB06932
+   ```
+   The `ims_maclib.jcl.j2` issues IMPORT DEFN SOURCE(CATALOG) and CREATE/UPDATE DB/PGM via CSLUSPOC.
+   CC=0008 from CSLUSPOC typically means resources already exist (COPY=N) — may be acceptable on first deploy.
+   Check if `max_rc: 8` should be raised or if the specific step needs to be conditional.
 
 ---
 
