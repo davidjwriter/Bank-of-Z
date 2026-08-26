@@ -79,9 +79,7 @@ cat > "${WLP_USER_DIR}/servers/${SERVER_NAME}/server.xml" << EOF
     <!-- Enable features -->
     <featureManager>
         <feature>servlet-6.0</feature>
-        <feature>jsp-3.1</feature>
-        <feature>transportSecurity-1.0</feature>
-        <feature>ssl-1.0</feature>
+        <feature>pages-3.1</feature>
     </featureManager>
 
     <!-- HTTP Endpoint Configuration -->
@@ -106,20 +104,6 @@ cat > "${WLP_USER_DIR}/servers/${SERVER_NAME}/server.xml" << EOF
     <logging traceSpecification="*=info"
              maxFileSize="20"
              maxFiles="10" />
-
-    <!-- SSL Configuration using RACF keyring -->
-    <!-- sslProtocol: restrict to TLS 1.2+ only -->
-    <ssl id="defaultSSLConfig"
-         keyStoreRef="defaultKeyStore"
-         sslProtocol="TLSv1.2,TLSv1.3"/>
-    <!-- For JCERACFKS (SAF keyring) keystores, Liberty requires the password
-         attribute to be present but ignores its value - "password" is the
-         conventional placeholder. The keyring itself is protected by RACF, not
-         by this field. -->
-    <keyStore id="defaultKeyStore"
-              location="safkeyring://${ZOS_ADMIN_USER}/${ZOS_KEYRING}"
-              type="JCERACFKS"
-              password="password"/>
 
     <!-- Hide Liberty welcome page
          https://www.ibm.com/docs/en/was-liberty/core?topic=configuration-httpdispatcher -->
