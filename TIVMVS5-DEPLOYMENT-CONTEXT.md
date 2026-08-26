@@ -146,7 +146,7 @@ For IMS, `debug_hlq` is a first-class field that triggers `ImsDebugLinkEdit` (as
 
 Note: `zconfig` rejects `-e key=` (empty value) — omit the argument entirely.
 
-### 9. Wazi Deploy db2_config.yml — must be patched on LPAR
+### 8. RACF surrogate submit — MEYER cannot submit jobs as SYSADM by default
 zconfig generates `IMSOCTL` JCL with `USER=SYSADM`. Submitting from MEYER hits:
 ```
 ICH408I SUBMITTER IS NOT AUTHORIZED BY USER
@@ -162,13 +162,21 @@ This is a one-time LPAR setup — once done it persists.
 
 **Do not run setup scripts as SYSADM directly** — SYSADM has superuser authority that can bypass read-only filesystem protections, and zconfig's `rm` cleanup can delete system files (this wiped `/etc/ssh` once, forcing SSH host key regeneration).
 
-### 8. RACF surrogate submit — MEYER cannot submit jobs as SYSADM by default
-Wazi Deploy reads `sdsnload` from its own config file. The `-e key=value` CLI override does not support nested dot-notation keys in this version. The file must be patched directly:
+### 9. Wazi Deploy db2_config.yml — sdsnload self-healing patch in task-wazi-deploy.sh
+Wazi Deploy reads `sdsnload` from its own `db2_config.yml` (not from `Development.yml`). On TIVMVS5, that file ships with `DSN131.SDSNLOAD` (wrong — `DSN131` is the DB2 instance HLQ, not the library HLQ). The correct value is `DSN.V13R1M0.SDSNLOAD`.
+
+**Root cause of `IEFA107I JOBLIB - DATA SET DSN131.SDSNLOAD NOT FOUND`**: The Wazi Deploy `db2_config.yml` populates `parameters['db2_system']['sdsnload']` used in `db2_bind_package.jcl.j2`. Even though `Development.yml` has `default_db2_sdsnload: "{{ db2.sdsnload }}"` (correct), the `db2_config.yml` file loaded via `include_global_config` → `global_initialization.yml` → `db2_config.yml` wins for the `db2_system` block.
+
+**Permanent fix (committed to tivmvs5 branch):** [`task-wazi-deploy.sh`](.setup/tasks/task-wazi-deploy.sh) now self-heals the file before every deploy:
 ```bash
-sed -i 's|DSN131\.SDSNLOAD|DSN.V13R1M0.SDSNLOAD|g' \
-  /usr/local/sandboxes/bank-of-z/dbb/WaziDeploy/zDeploy/deployment-configuration/global/db2_config.yml
+DB2_CONFIG_YML="${DEPLOY_ZDEPLOY_FOLDER}/deployment-configuration/global/db2_config.yml"
+if grep -q "DSN131\.SDSNLOAD" "$DB2_CONFIG_YML" 2>/dev/null; then
+    sed -i "s|DSN131\.SDSNLOAD|${DB2_SDSNLOAD_HLQ}.SDSNLOAD|g" "$DB2_CONFIG_YML"
+fi
 ```
-This is a one-time LPAR fix that persists across re-runs.
+The patch is idempotent — safe to re-run even if already correct. `DB2_SDSNLOAD_HLQ` is set from `config.yaml` `global.db2_sdsnload_hlq` = `DSN.V13R1M0`.
+
+**Why it recurred:** The `sed` was previously a one-time manual fix. Any Wazi Deploy reinstall or sandbox recreation regenerates `db2_config.yml` from the product defaults, reverting it to `DSN131.SDSNLOAD`.
 
 ---
 
@@ -256,7 +264,7 @@ ssh meyer@tivmvs5.pok.stglabs.ibm.com   # accept new fingerprint
 
 ---
 
-## Deployment Status as of 2026-08-25
+## Deployment Status as of 2026-08-26
 
 | Component | Status | Notes |
 |---|---|---|
@@ -266,43 +274,42 @@ ssh meyer@tivmvs5.pok.stglabs.ibm.com   # accept new fingerprint
 | IMS CTL (IMSOCTL) | ✅ Running | JOB06882 AC — CSLPLEX2 group active with IMSO member |
 | IMS databases | ✅ Populated | LOADACCT/LOADCUST/LOADCUSA/LOADHIST/LOADTSTA all CC=0000 |
 | DBB Build | ✅ Passing | Full build clean |
-| Wazi Deploy (CICS/DB2) | ✅ Complete | DB2 bind CC=0000, all 40 CICS NEWCOPYs done, WARs deployed |
-| Wazi Deploy (IMS ACBGEN) | ✅ Complete | Passed silently (no RC=8) with IMSOCTL running |
-| Wazi Deploy (IMS MACLIB) | ⚠️ CC=0008 | JOB06932 CC=0008 — `ims_maclib.jcl.j2` CSLUSPOC steps failing; needs investigation |
+| Wazi Deploy (full run) | ✅ Complete | DB2 bind CC=0000, 40 CICS NEWCOPYs, WARs deployed, ACBGEN passed, MACLIB CC=0008 (within max_rc) |
+| Wazi Deploy (IMS MACLIB) | ⚠️ CC=0008 | JOB06932 CC=0008 — CSLUSPOC IMPORT/CREATE/UPDATE; likely resources already exist; acceptable with `max_rc: 8` |
 | IMS RECON | ✅ Done | JOB06925 CC=0012 (expected), JOB06926 CC=0000 |
-| z/OS Connect (BAQBOZ) | ❌ CC=0255 | Server setup scripts not re-run after port change; `USER.PROCLIB` proc still has old ports |
-| Frontend (FEBOZ) | ❌ CC=0255 | Same — needs `setup-zosconnect-server.sh` and `setup-frontend-server.sh` re-run |
+| z/OS Connect (BAQBOZ) | ❌ CC=0255 | Proc uses `BPXBATSL`+`PGM` — wrong for shell script; fix committed; re-run setup-zosconnect-server.sh needed |
+| Frontend (FEBOZ) | ❌ CC=0255 | Same `BPXBATSL` bug; fix committed; re-run setup-frontend-server.sh needed |
 
 ---
 
 ## Next Steps
 
-1. **Force-update config.yaml and re-run server setup** (port change in git, procs not yet updated):
+1. **Pull the BPXBATCH fix and re-run server setup scripts** on TIVMVS5:
    ```bash
-   git show tivmvs5:.setup/config/config.yaml > .setup/config/config.yaml
+   cd /usr/local/sandboxes/bank-of-z/Bank-of-Z
+   git show tivmvs5:.setup/setup/setup-zosconnect-server.sh > .setup/setup/setup-zosconnect-server.sh
+   git show tivmvs5:.setup/setup/setup-frontend-server.sh > .setup/setup/setup-frontend-server.sh
    rm -f .setup/config/.env && exec bash -l
    source .setup/config/setenv.sh
-   # Verify: echo "Frontend: $FRONTEND_HTTPS_PORT  zOSConnect: $ZOSCONNECT_HTTPS_PORT"
-   # Should print 9446 and 9448
    .setup/setup/setup-zosconnect-server.sh
    .setup/setup/setup-frontend-server.sh
    ```
+   The scripts will regenerate `USER.PROCLIB(BAQBOZ)` and `USER.PROCLIB(FEBOZ)` with `PGM=BPXBATCH,PARM='SH ...'`.
 
-2. **Wait ~60s for Liberty JVM startup**, then verify:
+2. **Verify servers start** (allow ~30s for JVM init):
    ```bash
-   jls | grep -E "FEBOZ|BAQBOZ"   # must show AC
-   curl -sk -o /dev/null -w "%{http_code}" https://127.0.0.1:9446/
+   jls | grep -E "FEBOZ|BAQBOZ"   # must show AC not CC=0255
+   curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:9447/health/
+   curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:9445/
    ```
 
-3. **Investigate ims_maclib CC=0008** — look at the CSLUSPOC output:
+3. **If SSL fails** (keystore error in messages.log) — the `ZOS_KEYRING` env var was empty at setup time,
+   leaving `safkeyring://TIVMVS/` (no keyring name). Check the keyring name and fix:
    ```bash
-   pjdd JOB06932 SYSPRINT
-   # Or check all DDs:
-   ddls JOB06932
+   tsocmd "RACDCERT LISTRING(*) ID(TIVMVS)"
+   # Then update tls.xml manually with the correct keyring name:
+   # location="safkeyring://TIVMVS/<KeyRingName>"
    ```
-   The `ims_maclib.jcl.j2` issues IMPORT DEFN SOURCE(CATALOG) and CREATE/UPDATE DB/PGM via CSLUSPOC.
-   CC=0008 from CSLUSPOC typically means resources already exist (COPY=N) — may be acceptable on first deploy.
-   Check if `max_rc: 8` should be raised or if the specific step needs to be conditional.
 
 ---
 
@@ -315,6 +322,8 @@ ssh meyer@tivmvs5.pok.stglabs.ibm.com   # accept new fingerprint
 | `.setup/zconfig/cics-region.yaml` | LPAR HLQs; `db2_sdsnload_hlq` for steplib; `BP0`; single JVM profile; `pltpi/pltsd=NO` |
 | `.setup/zconfig/ims-region.yaml` | LPAR HLQs; `debug_hlq=""`; `db2_hlq=DSN.V13R1M0`; `ims_plex=PLEX2` |
 | `.setup/setup/setup-cics-region.sh` | RACF STARTED profile; write CICS proc to USER.PROCLIB; `opercmd "S CICSBOZ"` (Stages 4-6 were missing) |
+| `.setup/setup/setup-zosconnect-server.sh` | Proc changed from `PGM=BPXBATSL,PARM='PGM ...'` to `PGM=BPXBATCH,PARM='SH ...'` — shell script requires BPXBATCH |
+| `.setup/setup/setup-frontend-server.sh` | Same BPXBATCH fix |
 | `.setup/setup/setup-ims-region.sh` | Drop `debug_hlq` from zconfig apply args; copy procs to USER.PROCLIB; use `DB2_SDSNLOAD_HLQ` for db2_hlq |
 | `.setup/tasks/task-wazi-deploy.sh` | CMCI poll before wazideploy fires; temp file fix (`.j2` not `.j2.$$`) |
 | `.setup/deploy/Development.yml` | `default_db2_sdsnload` changed from `{{ db2.db2_hlq }}.SDSNLOAD` to `{{ db2.sdsnload }}` |
