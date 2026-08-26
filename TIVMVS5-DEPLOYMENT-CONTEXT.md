@@ -264,7 +264,7 @@ ssh meyer@tivmvs5.pok.stglabs.ibm.com   # accept new fingerprint
 
 ---
 
-## Deployment Status as of 2026-08-26
+## Deployment Status as of 2026-08-26 (latest)
 
 | Component | Status | Notes |
 |---|---|---|
@@ -277,39 +277,33 @@ ssh meyer@tivmvs5.pok.stglabs.ibm.com   # accept new fingerprint
 | Wazi Deploy (full run) | ✅ Complete | DB2 bind CC=0000, 40 CICS NEWCOPYs, WARs deployed, ACBGEN passed, MACLIB CC=0008 (within max_rc) |
 | Wazi Deploy (IMS MACLIB) | ⚠️ CC=0008 | JOB06932 CC=0008 — CSLUSPOC IMPORT/CREATE/UPDATE; likely resources already exist; acceptable with `max_rc: 8` |
 | IMS RECON | ✅ Done | JOB06925 CC=0012 (expected), JOB06926 CC=0000 |
-| z/OS Connect (BAQBOZ) | ❌ CC=0255 | Proc uses `BPXBATSL`+`PGM` — wrong for shell script; fix committed; re-run setup-zosconnect-server.sh needed |
-| Frontend (FEBOZ) | ❌ CC=0255 | Same `BPXBATSL` bug; fix committed; re-run setup-frontend-server.sh needed |
+| z/OS Connect (BAQBOZNW) | ✅ Running (STC06980 AC) | `BPXBATCH`+`SH`+`PATH='/dev/null'` fix working; running as BAQBOZNW due to JES2 proc cache on BAQBOZ |
+| Frontend (FEBOZNEW) | ✅ Running (STC06975 AC) | Same fix; running as FEBOZNEW due to JES2 proc cache on FEBOZ |
 
 ---
 
 ## Next Steps
 
-1. **Pull the BPXBATCH fix and re-run server setup scripts** on TIVMVS5:
-   ```bash
-   cd /usr/local/sandboxes/bank-of-z/Bank-of-Z
-   git show tivmvs5:.setup/setup/setup-zosconnect-server.sh > .setup/setup/setup-zosconnect-server.sh
-   git show tivmvs5:.setup/setup/setup-frontend-server.sh > .setup/setup/setup-frontend-server.sh
-   rm -f .setup/config/.env && exec bash -l
-   source .setup/config/setenv.sh
-   .setup/setup/setup-zosconnect-server.sh
-   .setup/setup/setup-frontend-server.sh
-   ```
-   The scripts will regenerate `USER.PROCLIB(BAQBOZ)` and `USER.PROCLIB(FEBOZ)` with `PGM=BPXBATCH,PARM='SH ...'`.
+1. **Run fresh DBB build + Wazi Deploy** — WARs will land in correct server dirs and Liberty MODIFY refresh will pick them up.
 
-2. **Verify servers start** (allow ~30s for JVM init):
+2. **After deploy, verify end-to-end:**
    ```bash
-   jls | grep -E "FEBOZ|BAQBOZ"   # must show AC not CC=0255
-   curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:9447/health/
    curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:9445/
+   curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:9447/health/
    ```
 
-3. **If SSL fails** (keystore error in messages.log) — the `ZOS_KEYRING` env var was empty at setup time,
-   leaving `safkeyring://TIVMVS/` (no keyring name). Check the keyring name and fix:
-   ```bash
-   tsocmd "RACDCERT LISTRING(*) ID(TIVMVS)"
-   # Then update tls.xml manually with the correct keyring name:
-   # location="safkeyring://TIVMVS/<KeyRingName>"
-   ```
+3. **JES2 proc cache note** — `S FEBOZ` and `S BAQBOZ` still start the old (broken) procs due to JES2 caching.
+   Use `S FEBOZNEW` and `S BAQBOZNW` to restart until next IPL/JES2 recycle.
+   `USER.PROCLIB(FEBOZ)` and `USER.PROCLIB(BAQBOZ)` have already been overwritten with the correct content
+   so they will work correctly after the next JES2 recycle.
+
+4. **Remaining issues to address post-deploy:**
+   - `jsp-3.1` feature not found in frontend Liberty — change to `pages-3.1` in `server.xml`
+   - `safkeyringjce://TIVMVS/` keystore error — `ZOS_KEYRING` was empty at setup time; HTTPS won't work until fixed
+     ```bash
+     tsocmd "RACDCERT LISTRING(*) ID(TIVMVS)"
+     # Update /usr/local/sandboxes/bank-of-z/frontend/servers/bankz-frontend/server.xml keyStore location
+     ```
 
 ---
 
