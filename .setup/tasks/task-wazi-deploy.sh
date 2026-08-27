@@ -163,6 +163,59 @@ fi
 print_info "Starting wazideploy-deploy for BankZ"
 
 # =========================
+# Ensure Wazi Deploy db2_config.yml uses the correct SDSNLOAD HLQ.
+# On TIVMVS5 the library HLQ is DSN.V13R1M0, not DSN131.
+# This patch is idempotent — re-applying it is safe.
+#
+# We derive the correct HLQ directly from config.yaml (not from the .env cache)
+# to guard against stale env var issues. DB2_SDSNLOAD_HLQ may be empty if the
+# .env was generated before the variable was added to setenv.sh.
+# =========================
+DB2_CONFIG_YML="${DEPLOY_ZDEPLOY_FOLDER}/deployment-configuration/global/db2_config.yml"
+
+# Derive SDSNLOAD HLQ directly from config.yaml — immune to stale .env cache
+_DB2_SDSNLOAD_HLQ="${DB2_SDSNLOAD_HLQ:-}"
+if [[ -z "$_DB2_SDSNLOAD_HLQ" ]]; then
+    _DB2_SDSNLOAD_HLQ=$(grep -A1 'db2_sdsnload_hlq:' "$CONFIG_FILE" 2>/dev/null | \
+        tail -1 | sed 's/.*db2_sdsnload_hlq:[[:space:]]*//' | tr -d '"'"'" | tr -d '[:space:]')
+fi
+# Final fallback to known TIVMVS5 value
+_DB2_SDSNLOAD_HLQ="${_DB2_SDSNLOAD_HLQ:-DSN.V13R1M0}"
+
+print_info "DB2 SDSNLOAD HLQ resolved to: $_DB2_SDSNLOAD_HLQ"
+
+if [[ -f "$DB2_CONFIG_YML" ]]; then
+    print_info "Scanning $DB2_CONFIG_YML for incorrect SDSNLOAD entries ..."
+    # Replace any <hlq>.SDSNLOAD that is NOT the correct HLQ (catches DSN131.SDSNLOAD and any other wrong value)
+    # First show what's currently there
+    _CURRENT=$(grep -i "sdsnload" "$DB2_CONFIG_YML" 2>/dev/null | head -5 || true)
+    print_info "  Current sdsnload entries: $_CURRENT"
+
+    if grep -qv "${_DB2_SDSNLOAD_HLQ}\.SDSNLOAD" "$DB2_CONFIG_YML" 2>/dev/null && \
+       grep -qi "sdsnload" "$DB2_CONFIG_YML" 2>/dev/null; then
+        # Replace any occurrence of <anything>.SDSNLOAD with the correct HLQ
+        sed "s|[A-Za-z0-9]*\.[A-Za-z0-9.]*\.SDSNLOAD|${_DB2_SDSNLOAD_HLQ}.SDSNLOAD|g" \
+            "$DB2_CONFIG_YML" > /tmp/db2_config_patched.$$ && \
+            cp /tmp/db2_config_patched.$$ "$DB2_CONFIG_YML" && \
+            rm -f /tmp/db2_config_patched.$$
+        print_info "Patched $DB2_CONFIG_YML SDSNLOAD -> ${_DB2_SDSNLOAD_HLQ}.SDSNLOAD"
+        _AFTER=$(grep -i "sdsnload" "$DB2_CONFIG_YML" 2>/dev/null | head -5 || true)
+        print_info "  After patch: $_AFTER"
+    else
+        print_info "db2_config.yml SDSNLOAD already correct (${_DB2_SDSNLOAD_HLQ}.SDSNLOAD) -- no patch needed"
+    fi
+else
+    print_warning "db2_config.yml not found at $DB2_CONFIG_YML"
+    print_warning "  DEPLOY_ZDEPLOY_FOLDER=${DEPLOY_ZDEPLOY_FOLDER}"
+    print_warning "  Searching for db2_config.yml elsewhere ..."
+    _FOUND=$(find /usr/local/sandboxes -name "db2_config.yml" 2>/dev/null | head -5 || true)
+    if [[ -n "$_FOUND" ]]; then
+        print_warning "  Found at: $_FOUND"
+        print_warning "  Update DEPLOY_ZDEPLOY_FOLDER in config.yaml to match the correct path."
+    fi
+fi
+
+# =========================
 # Wait for CMCI to be ready
 # Poll until HTTP 2xx/3xx or timeout. The CICS JVM server (EYUSMSSJ)
 # can take 60-120s to initialise after the region starts.

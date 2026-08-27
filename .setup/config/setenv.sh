@@ -150,6 +150,8 @@ IMS_DFS_IMS_SSID=${IMS_DFS_IMS_SSID:-$(get_section_value 'ims' 'dfs_ims_ssid')}
 IMS_JAVA_FOLDER="${IMS_JAVA_FOLDER:-$(get_section_value 'ims' 'ims_java_dir')}"
 IMS_JAVA_HOME="${IMS_JAVA_HOME:-$(get_section_value 'ims' 'ims_java_home')}"
 IMS_IXVOLSER="${IMS_IXVOLSER:-$(get_section_value 'ims' 'ixvolser')}"
+IMS_IRLM_ENABLEMENT="${IMS_IRLM_ENABLEMENT:-$(get_section_value 'ims' 'irlm_enablement')}"
+IMS_DATABASE_LOCK_MANAGER_SERVER_NAME="${IMS_DATABASE_LOCK_MANAGER_SERVER_NAME:-$(get_section_value 'ims' 'database_lock_manager_server_name')}"
 
 # zconfig
 ZCONFIG_ZCB_HOME=$(get_section_value 'zconfig' 'zcb_home')
@@ -158,6 +160,7 @@ ZCONFIG_HOME="${ZCONFIG_HOME:-$(get_section_value 'zconfig' 'zconfig_home')}"
 # Debug
 DEBUG_HLQ=$(get_section_value 'debug' 'debug_hlq')
 DEBUG_TCPIP_HQL=$(get_section_value 'debug' 'tcpip_hlq')
+EQAPROF_CONF_DIR=$(get_section_value 'debug' 'eqaprof_conf_dir')
 
 # Db2
 DB2_HLQ="${DB2_HLQ:-$(get_section_value 'db2' 'db2_hlq')}"

@@ -1,6 +1,6 @@
 # TIVMVS5 Bank of Z Deployment — Ongoing Context
 
-> Last updated: 2026-08-26 (SSL section updated — CA creation in progress)
+> Last updated: 2026-08-27 (upstream sync analysis; IRLM fields merged; createvsica JCL documented)
 > Branch: `tivmvs5` on `git@github.com:davidjwriter/Bank-of-Z.git`  
 > Upstream: `https://github.com/IBM/Bank-of-Z.git`
 
@@ -291,6 +291,56 @@ ssh meyer@tivmvs5.pok.stglabs.ibm.com   # accept new fingerprint
 | `VSICA` | **Being created** | YES (after JOB07013) | 2030/06/09 | JOB07013 submitted — check `pjdd JOB07013 SYSTSPRT` |
 | `LibertyCA.BLZ703` | TRUST | YES | 2025/12/31 ❌ EXPIRED | Connected to STCLIB/WWWSERV keyrings — do not delete |
 
+### createvsica JCL — corrected for TIVMVS5
+The JCL from the other LPAR has two problems before it can run here:
+1. **Jobname `$RACFCR1`** is a template placeholder — JCL SET symbol names are ≤8 chars and cannot start with `$`. Replace with `CREATECA`.
+2. **CN `10.250.64.10_SELF_NEW_CACERT`** embeds that LPAR's IP. The CN is informational-only for a CA cert; use `TIVMVS5_VSICA_ROOT` or anything ≤32 chars.
+3. **`/*` must never appear inside `SYSTSIN`** — it is JES2's end-of-data delimiter and would silently truncate the RACDCERT commands.
+
+```bash
+cat > /tmp/createvsica.jcl << 'EOF'
+//CREATECA JOB MSGCLASS=X,CLASS=A,REGION=0M
+//*
+//STEP1       EXEC  PGM=IKJEFT01,DYNAMNBR=20
+//SYSTSPRT    DD    SYSOUT=*
+//SYSTSIN     DD    *
+RACDCERT CERTAUTH DELETE(LABEL('VSICA'))
+SETROPTS RACLIST(DIGTCERT) REFRESH
+
+RACDCERT CERTAUTH GENCERT SUBJECTSDN(+
+         CN('TIVMVS5_VSICA_ROOT') +
+         OU('ZOSVSI') +
+         O('International Business Machines') +
+         C('US')) +
+         NOTAFTER(DATE(2030/06/09)) +
+         SIZE(2048) +
+         KEYUSAGE(HANDSHAKE, DATAENCRYPT, DOCSIGN, CERTSIGN) +
+         WITHLABEL('VSICA')
+
+SETROPTS RACLIST(DIGTCERT) REFRESH
+SETROPTS RACLIST(DIGTRING) REFRESH
+END
+EOF
+# Convert to EBCDIC then copy over MEYER.TEMP.JCL (re-use the existing dataset)
+a2e -f ISO8859-1 -t IBM-1047 /tmp/createvsica.jcl
+dcp /tmp/createvsica.jcl "MEYER.TEMP.JCL"
+tsocmd "SUBMIT 'MEYER.TEMP.JCL'"
+# Note: TSO will print IKJ56250I CREATECA(JOBxxxxx) SUBMITTED
+```
+
+If `MEYER.TEMP.JCL` does not exist yet (first time or was deleted):
+```bash
+tsocmd "ALLOC DATASET('MEYER.TEMP.JCL') NEW CATALOG RECFM(F,B) LRECL(80) BLKSIZE(3120) TRACKS SPACE(1,1)"
+# then the dcp + tsocmd SUBMIT above
+```
+
+Verify after submission:
+```bash
+pjdd <JOBxxxxx> SYSTSPRT   # check for RACDCERT success messages
+tsocmd "RACDCERT CERTAUTH LIST(LABEL('VSICA'))"
+# Must show: End Date 2030/06/09, Private Key: YES
+```
+
 ### JCL submission quirks on TIVMVS5
 - `jsub <uss-path>` — **does not work** (only accepts MVS dataset names)
 - `submit <uss-path>` — **does not work** (JES rejects USS paths)
@@ -310,27 +360,39 @@ ssh meyer@tivmvs5.pok.stglabs.ibm.com   # accept new fingerprint
 3. **Both Liberty servers** (BAQBOZNW + FEBOZNEW) reference `safkeyring://SYSADM/BankOfZRing` via `keystoreType="JCERACFKS"` — SSL blocks need to be **restored** in setup scripts (currently removed)
 4. **`ZOS_CA_LABEL`**, **`ZOS_KEYRING`**, **`ZOS_CREATE_CERTS`** now exported from `setenv.sh` (committed d6b494a)
 
-### git state (committed d6b494a)
-- `config.yaml`: `zos_ca_label: "VSICA"`, `zos_keyring: "BankOfZRing"`, `zos_create_certs: "true"`, `zos_admin_user: "SYSADM"`
-- `setenv.sh`: exports `ZOS_CA_LABEL`, `ZOS_KEYRING`, `ZOS_CREATE_CERTS`
+### git state (as of 2026-08-27)
+- `config.yaml`: `zos_ca_label: "VSICA"`, `zos_keyring: "BankOfZRing"`, `zos_create_certs: "true"`, `zos_admin_user: "SYSADM"`; IMS IRLM fields added (`ims_irlm_enablement: false`, `ims_database_lock_manager_server_name: "IRLM"`); `eqaprof_*` debug fields added
+- `setenv.sh`: exports `ZOS_CA_LABEL`, `ZOS_KEYRING`, `ZOS_CREATE_CERTS`, `IMS_IRLM_ENABLEMENT`, `IMS_DATABASE_LOCK_MANAGER_SERVER_NAME`, `EQAPROF_CONF_DIR`
+- `ims-region.yaml`: `ims_irlm_enablement`/`ims_database_lock_manager_server_name` vars wired; `irlm.irlmnm` block added; hardcoded `XRLM` replaced
+- `setup-ims-region.sh`: `-e ims_irlm_enablement` and `-e ims_database_lock_manager_server_name` added to `zconfig apply`; **`-e db2_hlq="${DB2_SDSNLOAD_HLQ}"` preserved** (upstream switched to `DB2_HLQ`=`DSN131` which is wrong for TIVMVS5)
 - `gencert-eku.sh`: validates CA is not expired before proceeding; uses `2099-12-31` as notAfter (Java caps at CAB Forum max ~200 days); no longer blindly uses CA expiry as server cert notAfter
 - `setup-zosconnect-server.sh` / `setup-frontend-server.sh`: SSL blocks **removed** — must be restored before re-running
+
+### Upstream sync status (as of 2026-08-27)
+Upstream `IBM/Bank-of-Z` has 5 commits ahead of our branch base. Analysis:
+
+| Upstream commit | What it does | Action |
+|---|---|---|
+| `33f7cce` Add IMS IRLM | IMS IRLM fields in config/setenv/ims-region/setup-ims | ✅ **Merged** (fields only; kept `DB2_SDSNLOAD_HLQ` for db2_hlq — upstream's `DB2_HLQ` is wrong for TIVMVS5) |
+| `423cd40` EQAPROF debug | Adds `eqaprof_*` config; **removes** IMS proc-copy loop from `setup-ims-region.sh` | ✅ **Additive parts merged**; proc-copy loop **kept** (needed for TIVMVS5 `USER.PROCLIB`) |
+| `57d1dbe` Simplify DBB | `dbb-app.yaml`/`zapp.yaml` changes | ⏭️ Deferred — not needed for SSL work |
+| `5408e20` Architecture diagram | Image only | ⏭️ Skip |
+| `5e91d1c` VSCode settings | `.vscode/settings.json` | ⏭️ Skip |
+
+**Do NOT do a plain `git merge upstream/main`** — it would overwrite all TIVMVS5-specific values in `config.yaml` (ports, HLQs, paths, `db2_sdsnload_hlq`) and switch `db2_hlq` to `DB2_HLQ` breaking IMS again.
 
 ---
 
 ## Next Steps (SSL)
 
-1. **Verify JOB07013 (VSICA creation) succeeded**:
-   ```bash
-   pjdd JOB07013 SYSTSPRT
-   tsocmd "RACDCERT CERTAUTH LIST(LABEL('VSICA'))"
-   # Must show: End Date 2030/06/09, Private Key: YES
-   ```
-   If JOB07013 failed, resubmit using the MVS dataset method:
-   ```bash
-   tsocmd "SUBMIT 'MEYER.TEMP.JCL'"
-   # MEYER.TEMP.JCL already contains the createvsica JCL from previous attempt
-   ```
+1. **Create/verify VSICA CA cert**:
+   - Check if JOB07013 already succeeded:
+     ```bash
+     pjdd JOB07013 SYSTSPRT
+     tsocmd "RACDCERT CERTAUTH LIST(LABEL('VSICA'))"
+     # Must show: End Date 2030/06/09, Private Key: YES
+     ```
+   - If it failed or `VSICA` does not exist, use the corrected JCL in the "createvsica JCL" section above. The two fixes vs your coworker's JCL: replace jobname `$RACFCR1` → `CREATECA`, and remove any `/*` from inside `SYSTSIN`.
 
 2. **Force-update config files on LPAR and clear stale .env**:
    ```bash
