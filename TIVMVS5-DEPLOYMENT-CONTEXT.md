@@ -264,7 +264,7 @@ ssh meyer@tivmvs5.pok.stglabs.ibm.com   # accept new fingerprint
 
 ---
 
-## Deployment Status as of 2026-08-26 (latest)
+## Deployment Status as of 2026-08-26 (latest — SSL work in progress)
 
 | Component | Status | Notes |
 |---|---|---|
@@ -279,43 +279,102 @@ ssh meyer@tivmvs5.pok.stglabs.ibm.com   # accept new fingerprint
 | IMS RECON | ✅ Done | JOB06925 CC=0012 (expected), JOB06926 CC=0000 |
 | z/OS Connect (BAQBOZNW) | ✅ Running (STC06980 AC) | HTTP port 9447 up; `health` returns 200; `ibm/api` enforces HTTPS — needs keyring |
 | Frontend (FEBOZNEW) | ✅ Running (STC06975 AC) | HTTP port 9445 up; WAR missing from apps dir; `pages-3.1` loaded after config refresh |
+| SSL / Keyring | ❌ Not yet created | `VSICA` CA does not exist yet; `LibertyCA.BLZ703` exists but expired 2025/12/31 |
+
+---
+
+## SSL / Certificate Context
+
+### CA certificate situation
+- `VSICA` — **does not exist** on TIVMVS5. Must be created (see Next Steps).
+- `LibertyCA.BLZ703` — exists, `Private Key: YES`, but **expired 2025/12/31**. Owned by CERTAUTH. Currently connected to STCLIB's `LibertyKeyring.BLZ703` and WWWSERV's `HTTPRING` — those are unrelated Liberty servers. Do not delete this cert.
+- **CA to create**: `VSICA` — valid through 2030/06/09. CERTAUTH-owned. Will be trust anchor for `SYSADM/BankOfZRing`.
+
+### How the cert flow works (for reference)
+1. **`addcert.sh`** — creates keyring `BankOfZRing` under `SYSADM`, connects `VSICA` as CERTAUTH trust anchor, calls `gencert-eku.sh`, connects resulting cert as DEFAULT
+2. **`gencert-eku.sh`** — generates keypair+cert in RACF signed by `VSICA`, exports public side, Bouncy Castle re-signs adding EKU serverAuth + SANs, re-imports DER. Cert validity capped at CAB Forum max (~200 days from today as of 2026).
+3. **Both Liberty servers** (BAQBOZNW z/OS Connect + FEBOZNEW frontend) reference `safkeyring://SYSADM/BankOfZRing` via `keystoreType="JCERACFKS"` in their `tls.xml` / `server.xml`.
+4. **`ZOS_CA_LABEL`**, **`ZOS_KEYRING`**, **`ZOS_CREATE_CERTS`** must be exported — now wired in `setenv.sh` (committed).
+
+### git state (all committed)
+- `config.yaml`: `zos_ca_label: "VSICA"`, `zos_keyring: "BankOfZRing"`, `zos_create_certs: "true"`, `zos_admin_user: "SYSADM"`
+- `setenv.sh`: now exports `ZOS_CA_LABEL`, `ZOS_KEYRING`, `ZOS_CREATE_CERTS`
+- `gencert-eku.sh`: no longer uses CA expiry as server cert NOTAFTER; validates CA is not expired; uses 2099-12-31 (capped by CAB Forum logic in Java)
+- Setup scripts (`setup-zosconnect-server.sh`, `setup-frontend-server.sh`): SSL blocks currently **removed** — need to be restored after keyring exists (see step 4 below)
 
 ---
 
 ## Next Steps
 
-1. **Create RACF keyring and self-signed cert** for SSL (no keyring exists on TIVMVS5 — `RACDCERT LISTRING` shows nothing):
+1. **Create the VSICA CA cert on the LPAR** — submit as SYSADM (MEYER has surrogate permit):
    ```bash
-   tsocmd "RACDCERT GENCERT ID(TIVMVS) SUBJECTSDN(CN('BankOfZ') O('IBM')) SIZE(2048) WITHLABEL('BankOfZCert') NOTAFTER(DATE(2027-12-31))"
-   tsocmd "RACDCERT ID(TIVMVS) ADDRING(BankOfZRing)"
-   tsocmd "RACDCERT ID(TIVMVS) CONNECT(LABEL('BankOfZCert') RING(BankOfZRing) DEFAULT)"
-   tsocmd "SETROPTS RACLIST(DIGTCERT DIGTRING) REFRESH"
+   cat > /tmp/createvsica.jcl << 'JCLEOF'
+   //$RACFCR1 JOB MSGCLASS=X,CLASS=A,REGION=0M,USER=SYSADM
+   //*
+   //STEP1       EXEC  PGM=IKJEFT01,DYNAMNBR=20
+   //SYSTSPRT    DD    SYSOUT=*
+   //SYSTSIN     DD    *
+   RACDCERT CERTAUTH DELETE(LABEL('VSICA'))
+   SETROPTS RACLIST(DIGTCERT) REFRESH
+   RACDCERT CERTAUTH GENCERT SUBJECTSDN(+
+            CN('TIVMVS5 Bank of Z CA') +
+            OU('BANKZ') +
+            O('International Business Machines') +
+            C('US')) +
+            NOTAFTER(DATE(2030/06/09)) +
+            SIZE(2048) +
+            KEYUSAGE(HANDSHAKE, DATAENCRYPT, DOCSIGN, CERTSIGN) +
+            WITHLABEL('VSICA')
+   SETROPTS RACLIST(DIGTCERT) REFRESH
+   SETROPTS RACLIST(DIGTRING) REFRESH
+   END
+   JCLEOF
+   a2e -f ISO8859-1 -t IBM-1047 /tmp/createvsica.jcl
+   jsub /tmp/createvsica.jcl
+   # Verify:
+   tsocmd "RACDCERT CERTAUTH LIST(LABEL('VSICA'))"
+   # Must show: End Date 2030/06/09, Private Key: YES
    ```
 
-2. **Update keyStore location** in both server configs to `safkeyring://TIVMVS/BankOfZRing`:
+2. **Force-update config files on LPAR** (stale .env cache must be cleared):
    ```bash
-   # z/OS Connect tls.xml (re-create it — was deleted)
-   # Frontend server.xml keyStore element
-   # Both setup scripts already updated in git to skip SSL — re-run setup scripts after keyring is created
+   cd /usr/local/sandboxes/bank-of-z/Bank-of-Z
+   git show tivmvs5:.setup/config/config.yaml > .setup/config/config.yaml
+   git show tivmvs5:.setup/config/setenv.sh > .setup/config/setenv.sh
+   git show tivmvs5:.setup/setup/gencert-eku.sh > .setup/setup/gencert-eku.sh
+   git show tivmvs5:.setup/setup/addcert.sh > .setup/setup/addcert.sh
+   rm -f .setup/config/.env
+   source .setup/config/setenv.sh
+   # Verify vars are set:
+   echo "ZOS_CA_LABEL=$ZOS_CA_LABEL  ZOS_KEYRING=$ZOS_KEYRING  ZOS_ADMIN_USER=$ZOS_ADMIN_USER"
+   # Expected: ZOS_CA_LABEL=VSICA  ZOS_KEYRING=BankOfZRing  ZOS_ADMIN_USER=SYSADM
    ```
 
-3. **Re-run setup scripts** to regenerate configs with SSL:
+3. **Run addcert.sh** to create the keyring and server cert:
+   ```bash
+   cd /usr/local/sandboxes/bank-of-z/Bank-of-Z
+   .setup/setup/addcert.sh
+   # Verify keyring created:
+   tsocmd "RACDCERT ID(SYSADM) LISTRING(BankOfZRing)"
+   # Must show: VSICA as CERTAUTH and BoZ as DEFAULT personal cert
+   ```
+
+4. **Restore SSL config in setup scripts** — the scripts currently generate no `tls.xml`. Need to add `keyStore` element pointing to `safkeyring://SYSADM/BankOfZRing` before re-running them. TODO: restore SSL blocks in `setup-zosconnect-server.sh` and `setup-frontend-server.sh`.
+
+5. **Re-run setup scripts** (after SSL blocks restored in step 4):
    ```bash
    source .setup/config/setenv.sh
    .setup/setup/setup-zosconnect-server.sh
    .setup/setup/setup-frontend-server.sh
    ```
-   Note: setup scripts currently have SSL removed. Need to restore SSL generation with correct keyring name before re-running.
-   **OR** manually patch the live server.xml/tls.xml with the keyring name and restart servers.
 
-4. **Check frontend WAR** — verify deploy put it in the right place:
+6. **Check frontend WAR** — verify deploy put it in the right place:
    ```bash
    ls /usr/local/sandboxes/bank-of-z/frontend/servers/bankz-frontend/apps/
-   # If missing, re-run wazi deploy
    opercmd "MODIFY FEBOZNEW,REFRESH,APPS"
    ```
 
-5. **JES2 proc cache note** — use `S FEBOZNEW` / `S BAQBOZNW` to restart until next IPL.
+7. **JES2 proc cache note** — use `S FEBOZNEW` / `S BAQBOZNW` to restart until next IPL.
    `USER.PROCLIB(FEBOZ)` and `USER.PROCLIB(BAQBOZ)` already have the correct content.
 
 ---
@@ -325,7 +384,7 @@ ssh meyer@tivmvs5.pok.stglabs.ibm.com   # accept new fingerprint
 | File | What changed |
 |---|---|
 | `.setup/config/config.yaml` | All LPAR HLQs, `ims_dfsplex=PLEX2`, `db2_sdsnload_hlq=DSN.V13R1M0`, ports, credentials |
-| `.setup/config/setenv.sh` | `ZOS_CURRENT_USER` from env not yaml; `~/.profile.bankz` fallback; `DB2_SDSNLOAD_HLQ` export; cert vars removed |
+| `.setup/config/setenv.sh` | `ZOS_CURRENT_USER` from env not yaml; `~/.profile.bankz` fallback; `DB2_SDSNLOAD_HLQ` export; now exports `ZOS_CA_LABEL`, `ZOS_KEYRING`, `ZOS_CREATE_CERTS` |
 | `.setup/zconfig/cics-region.yaml` | LPAR HLQs; `db2_sdsnload_hlq` for steplib; `BP0`; single JVM profile; `pltpi/pltsd=NO` |
 | `.setup/zconfig/ims-region.yaml` | LPAR HLQs; `debug_hlq=""`; `db2_hlq=DSN.V13R1M0`; `ims_plex=PLEX2` |
 | `.setup/setup/setup-cics-region.sh` | RACF STARTED profile; write CICS proc to USER.PROCLIB; `opercmd "S CICSBOZ"` (Stages 4-6 were missing) |
@@ -333,6 +392,7 @@ ssh meyer@tivmvs5.pok.stglabs.ibm.com   # accept new fingerprint
 | `.setup/setup/setup-frontend-server.sh` | Same BPXBATCH fix |
 | `.setup/setup/setup-ims-region.sh` | Drop `debug_hlq` from zconfig apply args; copy procs to USER.PROCLIB; use `DB2_SDSNLOAD_HLQ` for db2_hlq |
 | `.setup/tasks/task-wazi-deploy.sh` | CMCI poll before wazideploy fires; temp file fix (`.j2` not `.j2.$$`) |
+| `.setup/setup/gencert-eku.sh` | Validate CA expiry before use; use `2099-12-31` as requested notAfter (Java caps at CAB Forum max); no longer uses CA expiry as cert notAfter |
 | `.setup/deploy/Development.yml` | `default_db2_sdsnload` changed from `{{ db2.db2_hlq }}.SDSNLOAD` to `{{ db2.sdsnload }}` |
 | `.setup/config/config.yaml` | Ports: frontend 9444→9446/9081→9445, z/OS Connect 9443→9448/9080→9447 (avoid MortgageApp conflict) |
 | `.setup/build/datasets.yaml.j2` | `SDSNLOAD`/`SDSNEXIT` use `global.db2_sdsnload_hlq` |

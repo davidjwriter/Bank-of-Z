@@ -48,6 +48,9 @@ _BPXK_AUTOCVT=ON
 PYTHONUNBUFFERED=1
 ZOS_CURRENT_USER=$(printf '%s' "${USER:-${LOGNAME:-$(basename "$HOME")}}" | tr '[:lower:]' '[:upper:]')
 ZOS_ADMIN_USER=$(get_section_value 'global' 'zos_admin_user')
+ZOS_CREATE_CERTS=$(get_section_value 'global' 'zos_create_certs')
+ZOS_KEYRING=$(get_section_value 'global' 'zos_keyring')
+ZOS_CA_LABEL=$(get_section_value 'global' 'zos_ca_label')
 
  # Application
 APP_BASE_NAME=$(get_section_value 'app' 'base_name')

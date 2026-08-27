@@ -98,10 +98,33 @@ if [ -z "$ipaddr" ] || [ -z "$dnsname" ]; then
   exit 1
 fi
 
-expire=$(tsocmd "RACDCERT CERTAUTH LIST(LABEL('$ca_label'))" \
+# Read the CA's expiry so we can check it is still valid.
+# We do NOT use it as the server cert's NOTAFTER — that is driven by
+# ResignCert.java's CAB Forum validity cap (200/100/47 days from today).
+# Using a fixed far-future date lets ResignCert pick the maximum allowed.
+ca_expire=$(tsocmd "RACDCERT CERTAUTH LIST(LABEL('$ca_label'))" \
   | awk '/End Date:/ {gsub("/","-",$3); print $3}')
 
-print_info "IP=$ipaddr  DNS=$dnsname  VSICA expire=$expire"
+if [[ -z "$ca_expire" ]]; then
+  print_error "Could not determine expiry for CA '$ca_label' — verify the label is correct"
+  exit 1
+fi
+
+# Warn if CA is expired (past today) — addcert.sh should not have called us with a bad CA
+ca_expire_epoch=$(date -d "$ca_expire" +%s 2>/dev/null || \
+  python3 -c "import datetime,sys; d=sys.argv[1]; print(int(datetime.datetime.strptime(d,'%Y-%m-%d').timestamp()))" "$ca_expire" 2>/dev/null || echo 0)
+now_epoch=$(date +%s 2>/dev/null || echo 9999999999)
+if [[ "$ca_expire_epoch" -lt "$now_epoch" ]]; then
+  print_error "CA '$ca_label' expired on $ca_expire — update zos_ca_label in config.yaml to a valid CA"
+  exit 1
+fi
+
+# Use 2099-12-31 as the requested end date — ResignCert.java caps it at the
+# CAB Forum maximum validity from today (currently 200 days as of 2026).
+expire="2099-12-31"
+
+print_info "IP=$ipaddr  DNS=$dnsname  CA=$ca_label (expires $ca_expire)"
+print_info "Cert notAfter will be capped at CAB Forum limit from today (~200 days)."
 print_info "Private key stays in RACF keyring throughout."
 
 # Random passwords via Python

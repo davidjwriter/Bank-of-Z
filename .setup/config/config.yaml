@@ -34,7 +34,7 @@ global:
   liberty_home: "/usr/lpp/liberty_zos/25.0.0.9"
 
   # z/OS System
-  zos_admin_user: "TIVMVS"
+  zos_admin_user: "SYSADM"
   zos_current_user: "${ZOS_CURRENT_USER}"
   sys_proclib: "USER.PROCLIB"
   tcpip_hlq: "EZA"
@@ -56,6 +56,11 @@ global:
   frontend_https_port: 9446
   frontend_task_user: "{{ global.zos_admin_user}}"
 
+
+  # Certificates / SSL
+  zos_create_certs: "true"
+  zos_keyring: "BankOfZRing"
+  zos_ca_label: "VSICA"
 
   # CICS
   cics_hlq: "DFH.V6R3M0"
