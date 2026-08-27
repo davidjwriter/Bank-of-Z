@@ -277,33 +277,46 @@ ssh meyer@tivmvs5.pok.stglabs.ibm.com   # accept new fingerprint
 | Wazi Deploy (full run) | ✅ Complete | DB2 bind CC=0000, 40 CICS NEWCOPYs, WARs deployed, ACBGEN passed, MACLIB CC=0008 (within max_rc) |
 | Wazi Deploy (IMS MACLIB) | ⚠️ CC=0008 | JOB06932 CC=0008 — CSLUSPOC IMPORT/CREATE/UPDATE; likely resources already exist; acceptable with `max_rc: 8` |
 | IMS RECON | ✅ Done | JOB06925 CC=0012 (expected), JOB06926 CC=0000 |
-| z/OS Connect (BAQBOZNW) | ✅ Running (STC06980 AC) | `BPXBATCH`+`SH`+`PATH='/dev/null'` fix working; running as BAQBOZNW due to JES2 proc cache on BAQBOZ |
-| Frontend (FEBOZNEW) | ✅ Running (STC06975 AC) | Same fix; running as FEBOZNEW due to JES2 proc cache on FEBOZ |
+| z/OS Connect (BAQBOZNW) | ✅ Running (STC06980 AC) | HTTP port 9447 up; `health` returns 200; `ibm/api` enforces HTTPS — needs keyring |
+| Frontend (FEBOZNEW) | ✅ Running (STC06975 AC) | HTTP port 9445 up; WAR missing from apps dir; `pages-3.1` loaded after config refresh |
 
 ---
 
 ## Next Steps
 
-1. **Run fresh DBB build + Wazi Deploy** — WARs will land in correct server dirs and Liberty MODIFY refresh will pick them up.
-
-2. **After deploy, verify end-to-end:**
+1. **Create RACF keyring and self-signed cert** for SSL (no keyring exists on TIVMVS5 — `RACDCERT LISTRING` shows nothing):
    ```bash
-   curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:9445/
-   curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:9447/health/
+   tsocmd "RACDCERT GENCERT ID(TIVMVS) SUBJECTSDN(CN('BankOfZ') O('IBM')) SIZE(2048) WITHLABEL('BankOfZCert') NOTAFTER(DATE(2027-12-31))"
+   tsocmd "RACDCERT ID(TIVMVS) ADDRING(BankOfZRing)"
+   tsocmd "RACDCERT ID(TIVMVS) CONNECT(LABEL('BankOfZCert') RING(BankOfZRing) DEFAULT)"
+   tsocmd "SETROPTS RACLIST(DIGTCERT DIGTRING) REFRESH"
    ```
 
-3. **JES2 proc cache note** — `S FEBOZ` and `S BAQBOZ` still start the old (broken) procs due to JES2 caching.
-   Use `S FEBOZNEW` and `S BAQBOZNW` to restart until next IPL/JES2 recycle.
-   `USER.PROCLIB(FEBOZ)` and `USER.PROCLIB(BAQBOZ)` have already been overwritten with the correct content
-   so they will work correctly after the next JES2 recycle.
+2. **Update keyStore location** in both server configs to `safkeyring://TIVMVS/BankOfZRing`:
+   ```bash
+   # z/OS Connect tls.xml (re-create it — was deleted)
+   # Frontend server.xml keyStore element
+   # Both setup scripts already updated in git to skip SSL — re-run setup scripts after keyring is created
+   ```
 
-4. **Remaining issues to address post-deploy:**
-   - `jsp-3.1` feature not found in frontend Liberty — change to `pages-3.1` in `server.xml`
-   - `safkeyringjce://TIVMVS/` keystore error — `ZOS_KEYRING` was empty at setup time; HTTPS won't work until fixed
-     ```bash
-     tsocmd "RACDCERT LISTRING(*) ID(TIVMVS)"
-     # Update /usr/local/sandboxes/bank-of-z/frontend/servers/bankz-frontend/server.xml keyStore location
-     ```
+3. **Re-run setup scripts** to regenerate configs with SSL:
+   ```bash
+   source .setup/config/setenv.sh
+   .setup/setup/setup-zosconnect-server.sh
+   .setup/setup/setup-frontend-server.sh
+   ```
+   Note: setup scripts currently have SSL removed. Need to restore SSL generation with correct keyring name before re-running.
+   **OR** manually patch the live server.xml/tls.xml with the keyring name and restart servers.
+
+4. **Check frontend WAR** — verify deploy put it in the right place:
+   ```bash
+   ls /usr/local/sandboxes/bank-of-z/frontend/servers/bankz-frontend/apps/
+   # If missing, re-run wazi deploy
+   opercmd "MODIFY FEBOZNEW,REFRESH,APPS"
+   ```
+
+5. **JES2 proc cache note** — use `S FEBOZNEW` / `S BAQBOZNW` to restart until next IPL.
+   `USER.PROCLIB(FEBOZ)` and `USER.PROCLIB(BAQBOZ)` already have the correct content.
 
 ---
 
