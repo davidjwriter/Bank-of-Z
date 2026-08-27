@@ -53,6 +53,7 @@ print_info "Creating z/OS Connect server at: $WLP_USER_DIR"
 
 if [ -d "$WLP_USER_DIR" ]; then
     print_warning "Removing existing server at $WLP_USER_DIR"
+    chmod -R o+rwx "$WLP_USER_DIR" 2>/dev/null || true
     chown -R ${ZOS_CURRENT_USER} "$WLP_USER_DIR" 2>/dev/null || true
     rm -rf "$WLP_USER_DIR"
 
@@ -129,6 +130,35 @@ dcp "/tmp/BAQ${APP_SHORT_NAME}-$$.jcl" "${ZOSCONNECT_SYS_PROCLIB}(BAQ${APP_SHORT
 
 # Clean up temp files
 rm -f "/tmp/BAQ${APP_SHORT_NAME}-$$.jcl"
+
+# =========================
+# Deploy SSL/TLS configuration (RACF keyring with EKU cert).
+# =========================
+OVERRIDES_DIR="${WLP_USER_DIR}/servers/${APP_BASE_NAME_LOWER}Server/configDropins/overrides"
+TLS_DEST="${OVERRIDES_DIR}/tls.xml"
+print_info "Deploying SSL configuration (RACF keyring)..."
+cat > "${TLS_DEST}" << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<server>
+    <featureManager>
+        <feature>ssl-1.0</feature>
+        <feature>transportSecurity-1.0</feature>
+    </featureManager>
+    <ssl id="defaultSSLConfig"
+         keyStoreRef="defaultKeyStore"
+         sslProtocol="TLSv1.2,TLSv1.3"/>
+    <keyStore id="defaultKeyStore"
+              location="safkeyring://${ZOS_ADMIN_USER}/${ZOS_KEYRING}"
+              type="JCERACFKS"
+              password="password"/>
+    <httpDispatcher enableWelcomePage="false"/>
+    <config updateTrigger="disabled"/>
+    <applicationMonitor dropinsEnabled="false" updateTrigger="mbean"/>
+    <webContainer disableXPoweredBy="true"/>
+</server>
+EOF
+verify_file_written "${TLS_DEST}"
+print_success "SSL configuration deployed (safkeyring://${ZOS_ADMIN_USER}/${ZOS_KEYRING})"
 
 # =========================
 # Generate CICS connection config

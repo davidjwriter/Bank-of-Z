@@ -42,6 +42,10 @@ print_info "Creating Liberty server at: $WLP_USER_DIR"
 
 if [ -d "$WLP_USER_DIR" ]; then
     print_warning "Removing existing server at $WLP_USER_DIR"
+    # Liberty creates logs/tranlog owned by the STC user (not MEYER).
+    # chmod o+rwx on the parent dirs so we can traverse and delete them,
+    # then chown the subdirs before rm.
+    chmod -R o+rwx "$WLP_USER_DIR" 2>/dev/null || true
     chown -R ${ZOS_CURRENT_USER} "$WLP_USER_DIR" 2>/dev/null || true
     rm -rf "$WLP_USER_DIR" 2>/dev/null || true
 fi
