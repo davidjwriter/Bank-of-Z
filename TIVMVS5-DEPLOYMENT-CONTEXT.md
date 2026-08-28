@@ -277,9 +277,9 @@ ssh meyer@tivmvs5.pok.stglabs.ibm.com   # accept new fingerprint
 | Wazi Deploy (full run) | ✅ Complete | DB2 bind CC=0000, 40 CICS NEWCOPYs, WARs deployed, ACBGEN passed, MACLIB CC=0008 (within max_rc) |
 | Wazi Deploy (IMS MACLIB) | ⚠️ CC=0008 | JOB06932 CC=0008 — CSLUSPOC IMPORT/CREATE/UPDATE; likely resources already exist; acceptable with `max_rc: 8` |
 | IMS RECON | ✅ Done | JOB06925 CC=0012 (expected), JOB06926 CC=0000 |
-| z/OS Connect (BAQBOZNW) | ✅ Running (STC06980 AC) | HTTP port 9447 up; `health` returns 200; `ibm/api` enforces HTTPS — needs keyring |
-| Frontend (FEBOZNEW) | ✅ Running (STC06975 AC) | HTTP port 9445 up; WAR missing from apps dir; `pages-3.1` loaded after config refresh |
-| SSL / Keyring | ❌ Not yet created | `VSICA` CA does not exist yet; `LibertyCA.BLZ703` exists but expired 2025/12/31 |
+| z/OS Connect (BAQBOZ) | ✅ Running (SYSADM, STC07141 AC) | HTTPS port 9448 up; `health` returns 200; `api.war` loaded |
+| Frontend (FEBOZ) | ✅ Running (SYSADM, STC07160 AC) | HTTPS port 9446 up, HTTP 9445 up; WAR loaded; `curl https://localhost:9446/` → 200 |
+| SSL / Keyring | ✅ Complete | `VSICA` CA created (2030/06/09), `BoZ` server cert (~200 days), `BankOfZRing` keyring connected |
 
 ---
 
