@@ -84,7 +84,18 @@ cat > "${WLP_USER_DIR}/servers/${SERVER_NAME}/server.xml" << EOF
     <featureManager>
         <feature>servlet-6.0</feature>
         <feature>pages-3.1</feature>
+        <feature>ssl-1.0</feature>
+        <feature>transportSecurity-1.0</feature>
     </featureManager>
+
+    <!-- SSL Configuration using RACF keyring -->
+    <ssl id="defaultSSLConfig"
+         keyStoreRef="defaultKeyStore"
+         sslProtocol="TLSv1.2,TLSv1.3"/>
+    <keyStore id="defaultKeyStore"
+              location="safkeyring://${ZOS_ADMIN_USER}/${ZOS_KEYRING}"
+              type="JCERACFKS"
+              password="password"/>
 
     <!-- HTTP Endpoint Configuration -->
     <!-- onError="FAIL" stops the server if the port cannot be opened -->
